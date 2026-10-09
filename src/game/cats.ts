@@ -25,7 +25,7 @@ export const CATS: CatDef[] = [
     id: 'drummer', name: '鼓手猫', emoji: '🥁', type: 'vanguard', rarity: 2,
     effects: [eff({ kind: 'repeatBelow', count: 2, times: 1 })],
     traits: [tr({ kind: 'apPlus', value: 1 })],
-    desc: '2★ · 使之后行动的 2 只猫猫效果额外生效 1 次（升级翻倍）；行动时为主角 +1 行动值。',
+    desc: '2★ · 使之后行动的 2 只猫猫效果额外生效 1 次（升级翻倍）；每回合首次行动为主角 +1 行动值（上限 5 点）。',
   },
   {
     id: 'banner', name: '号角猫', emoji: '📯', type: 'vanguard', rarity: 2,
@@ -87,7 +87,7 @@ export const CATS: CatDef[] = [
     id: 'sage', name: '贤者猫', emoji: '🧙', type: 'partner', rarity: 3,
     effects: [eff({ kind: 'heroTotalPct', pct: 0.6 })],
     traits: [tr({ kind: 'apPlus', value: 1 })],
-    desc: '3★ · 主角总百分比 +60%（升级翻倍）；行动时为主角 +1 行动值。',
+    desc: '3★ · 主角总百分比 +60%（升级翻倍）；每回合首次行动为主角 +1 行动值（上限 5 点）。',
   },
   {
     id: 'twin', name: '双子猫', emoji: '👯', type: 'partner', rarity: 2,
@@ -143,7 +143,7 @@ export const CATS: CatDef[] = [
     id: 'time', name: '时之猫', emoji: '⏳', type: 'support', rarity: 3,
     effects: [eff({ kind: 'heroTAllPct', pct: 0.2 })],
     traits: [tr({ kind: 'apPlus', value: 1 })],
-    desc: '3★ · 主角总百分比乘区 +20%（升级翻倍）；行动时为主角 +1 行动值。拨动时间的魔猫。',
+    desc: '3★ · 主角总百分比乘区 +20%（升级翻倍）；每回合首次行动为主角 +1 行动值（上限 5 点，溢出转为恢复）。拨动时间的魔猫。',
   },
 ];
 
@@ -190,7 +190,7 @@ export function describeEffect(e: CatEffect, level = 1): string {
 export function describeTrait(t: CatTrait): string {
   switch (t.kind) {
     case 'free': return '不消耗猫粮';
-    case 'apPlus': return `行动时主角行动值 +${t.value}`;
+    case 'apPlus': return `每回合首次行动：行动值上限 +${t.value}（至多 5 点，溢出转为恢复行动值）`;
     case 'doubleFirst': return '每回合首次行动效果翻倍';
     case 'cheap': return '猫粮消耗 -1';
   }

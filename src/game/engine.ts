@@ -10,6 +10,9 @@ import { emptyPlacement, emptyZones, SLOT_LIMIT, CAT_TYPE_LABEL } from './types'
 let uidSeq = 1;
 export const newUid = () => `u${uidSeq++}`;
 
+/** 行动值硬上限：apPlus 词条最多把上限抬到 5 点，溢出转为立即恢复行动值 */
+export const AP_HARD_CAP = 5;
+
 export interface BattleOptions {
   startDiamonds?: number; // 🏆 兑换带入的开局钻石
   initialHand?: CatInstance[]; // 开局手牌
@@ -311,12 +314,21 @@ export function resolveAction(prev: BattleState): BattleState {
       }
     }
 
-    // 特性：行动值
+    // 特性：行动值 —— 每回合每只猫只生效一次；上限最高 5 点，溢出转为立即恢复
     for (const t of def.traits) {
-      if (t.kind === 'apPlus') {
-        st.apBonus += t.value;
-        st.ap = Math.min(st.apMax + st.apBonus, st.ap + t.value);
-        logLines.push(`⚡ ${def.emoji}${def.name} 为本回合 +${t.value} 行动值`);
+      if (t.kind === 'apPlus' && st.turnActed[inst.uid] === 1) {
+        const room = Math.max(0, AP_HARD_CAP - (st.apMax + st.apBonus)); // 上限还差几点到 5
+        const inc = Math.min(t.value, room);
+        if (inc > 0) {
+          st.apBonus += inc;
+          st.ap = Math.min(AP_HARD_CAP, st.ap + inc);
+          logLines.push(`⚡ ${def.emoji}${def.name} 为本回合行动值上限 +${inc}`);
+        }
+        const healed = Math.min(t.value - inc, AP_HARD_CAP - st.ap);
+        if (healed > 0) {
+          st.ap += healed;
+          logLines.push(`⚡ ${def.emoji}${def.name} 恢复 ${healed} 点行动值`);
+        }
       }
     }
   }
