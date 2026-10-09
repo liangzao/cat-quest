@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { endlessLevel, getLevel } from '@/game/levels';
-import { loadSave, persistSave } from '@/game/storage';
+import { loadSave, persistSave, defaultSave } from '@/game/storage';
 import { foodCap, victoryReward } from '@/game/balance';
 import type { LevelDef, SaveData } from '@/game/types';
 import { MainMenu } from '@/components/MainMenu';
@@ -85,6 +85,7 @@ export default function App() {
           onEndless={() => startSetup(endlessLevel(save.endless.stage), 'endless')}
           onDemon={() => setScreen({ name: 'demon' })}
           onCodex={() => setScreen({ name: 'codex' })}
+          onReset={() => updateSave((s) => ({ ...defaultSave(), badges: s.badges }))}
         />
       );
     case 'story':
