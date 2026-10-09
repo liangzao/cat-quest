@@ -20,6 +20,7 @@ export function SetupScreen({
   const cap = Math.round(foodCap(save.foodUpgrade) * level.foodScale);
   const upCost = foodUpgradeCost(save.foodUpgrade);
   const hpLeft = save.records[level.id]?.hpLeft;
+  const canAffordUp = save.badges - exchange >= upCost;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col p-4 pb-10">
@@ -107,14 +108,23 @@ export function SetupScreen({
       </div>
 
       <button
-        onClick={() => save.foodUpgrade < MAX_FOOD_UPGRADE && onChange((s) =>
-          s.badges >= upCost ? { ...s, badges: s.badges - upCost, foodUpgrade: s.foodUpgrade + 1 } : s,
+        onClick={() => save.foodUpgrade < MAX_FOOD_UPGRADE && canAffordUp && onChange((s) =>
+          s.badges - exchange >= upCost ? { ...s, badges: s.badges - upCost, foodUpgrade: s.foodUpgrade + 1 } : s,
         )}
-        className="mb-6 rounded-xl border border-orange-500/40 bg-orange-950/50 px-3 py-2.5 text-left text-sm text-orange-200 hover:border-orange-300"
-        title={save.foodUpgrade < MAX_FOOD_UPGRADE ? `升级猫粮上限：${fmt(upCost)}🏆` : '已满级'}
+        className={cn(
+          'mb-6 rounded-xl border px-3 py-2.5 text-left text-sm transition',
+          save.foodUpgrade < MAX_FOOD_UPGRADE && canAffordUp
+            ? 'border-orange-500/40 bg-orange-950/50 text-orange-200 hover:border-orange-300'
+            : 'border-slate-700 bg-slate-900/50 text-slate-500',
+        )}
+        title={save.foodUpgrade < MAX_FOOD_UPGRADE ? (canAffordUp ? `升级猫粮上限：${fmt(upCost)}🏆` : `奖杯不足：需要 ${fmt(upCost)}🏆`) : '已满级'}
       >
         🍖 猫粮上限 <b>{foodCap(save.foodUpgrade)}</b>
-        {save.foodUpgrade < MAX_FOOD_UPGRADE && <span className="ml-2 text-xs">→ {foodCap(save.foodUpgrade + 1)}（{fmt(upCost)}🏆 升级，永久生效）</span>}
+        {save.foodUpgrade < MAX_FOOD_UPGRADE && (
+          <span className="ml-2 text-xs">
+            → {foodCap(save.foodUpgrade + 1)}（{fmt(upCost)}🏆 升级，永久生效）{!canAffordUp && ' · 奖杯不足'}
+          </span>
+        )}
       </button>
 
       <Button

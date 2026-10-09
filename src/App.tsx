@@ -106,6 +106,7 @@ export default function App() {
           key={screen.key}
           level={screen.level}
           save={save}
+          onChange={updateSave}
           onBack={() => setScreen(screen.mode === 'story' ? { name: 'story' } : { name: 'menu' })}
           onStart={(startDiamonds, badgeCost) => {
             if (badgeCost > 0) {
