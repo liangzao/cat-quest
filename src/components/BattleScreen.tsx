@@ -152,7 +152,7 @@ function HandCard({ inst, selected, onClick, canDrag }: { inst: CatInstance; sel
         def.rarity === 2 ? 'border-amber-400/70' : def.rarity === 3 ? 'border-fuchsia-400/80 shadow-[0_0_12px_rgba(232,121,249,0.35)]' : 'border-slate-500/70',
         selected && 'ring-4 ring-yellow-300 scale-105',
         canDrag && 'cursor-grab active:cursor-grabbing',
-        onClick && 'cursor-pointer hover:scale-[1.04] active:scale-95',
+        'cursor-pointer hover:scale-[1.04] active:scale-95',
       )}
     >
       <CatTip inst={inst} open={tip.tipOpen} />
