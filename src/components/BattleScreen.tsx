@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, DragEvent } from 'react';
-import { CAT_MAP, catCost, describeEffect, describeTrait, star } from '@/game/cats';
+import { CAT_MAP, catCost, catImg, describeEffect, describeTrait, star } from '@/game/cats';
 import { fmt, DRAW_COST, SELL_PRICE, START_HAND, victoryReward } from '@/game/balance';
 import { createBattle, drawCard, dropCard, endTurn, placeCard, resolveAction, sellCard, unplaceCard } from '@/game/engine';
 import { drawHand } from '@/game/gacha';
@@ -83,7 +83,7 @@ function CatTip({ inst, open }: { inst: CatInstance; open?: boolean }) {
         open ? 'block' : 'hidden group-hover:block',
       )}
     >      <div className="flex items-center gap-1.5">
-        <span className="text-2xl">{def.emoji}</span>
+        <img src={catImg(def.id)} alt={def.name} className="h-10 w-10 shrink-0 rounded-full bg-slate-800/70 object-contain" />
         <div className="min-w-0 flex-1">
           <div className="text-sm font-black">{def.name}</div>
           <div className="text-[10px] text-amber-300">{star(def.rarity)} · {CAT_TYPE_LABEL[def.type]} · {cost === 0 ? '不耗粮' : `🍖${cost}`}</div>
@@ -114,7 +114,7 @@ function ModalCat({ inst }: { inst: CatInstance }) {
       className="group relative w-24 rounded-xl border border-slate-600 bg-slate-800/80 p-2 text-center transition hover:scale-[1.04]"
     >
       <CatTip inst={inst} open={tip.tipOpen} />
-      <div className="text-3xl">{def.emoji}</div>
+      <img src={catImg(def.id)} alt={def.name} className="mx-auto h-16 w-16 rounded-full bg-slate-800/70 object-contain" />
       <div className="mt-1 text-xs font-bold">{def.name}</div>
       <div className="text-[10px] text-amber-300">{star(def.rarity)} · {CAT_TYPE_LABEL[def.type]}</div>
     </button>
@@ -158,7 +158,7 @@ function HandCard({ inst, selected, onClick, canDrag }: { inst: CatInstance; sel
       <CatTip inst={inst} open={tip.tipOpen} />
       <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-lg bg-gradient-to-r', CAT_TYPE_COLOR[def.type])} />
       <div className="flex items-center gap-1">
-        <span className="text-xl leading-none">{def.emoji}</span>
+        <img src={catImg(def.id)} alt={def.name} className="h-9 w-9 shrink-0 rounded-full bg-slate-800/70 object-contain" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-[11px] font-bold leading-tight">{def.name}</div>
           <div className="text-[9px] text-slate-400">{star(def.rarity)} · {CAT_TYPE_LABEL[def.type].slice(0, 2)}</div>
@@ -205,7 +205,7 @@ function FieldCat({
       )}
     >
       <CatTip inst={inst} open={tip.tipOpen} />
-      <span className={cn('text-xl', hl && 'animate-bounce')}>{def.emoji}</span>
+      <img src={catImg(def.id)} alt={def.name} className={cn('h-7 w-7 shrink-0 rounded-full bg-slate-800/70 object-contain', hl && 'animate-bounce')} />
       <span className="flex-1 truncate font-bold">{def.name}</span>
       {inst.level > 1 && <span className="rounded bg-sky-900/80 px-1 text-[10px] font-bold text-sky-300">Lv.{inst.level}</span>}
       <span className="text-[11px] text-slate-400">{cost === 0 ? '免费' : `🍖${cost}`}</span>

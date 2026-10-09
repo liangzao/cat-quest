@@ -131,6 +131,9 @@ export const CATS: CatDef[] = [
 
 export const CAT_MAP: Record<string, CatDef> = Object.fromEntries(CATS.map((c) => [c.id, c]));
 
+/** 猫猫立绘（AI 生成的猫猫元素图，透明背景） */
+export const catImg = (defId: string) => `${import.meta.env.BASE_URL}assets/cats/${defId}.png`;
+
 /** 猫粮消耗 = ★数（cheap -1，free 0），与等级无关 */
 export function catCost(def: CatDef): number {
   let c = def.rarity;

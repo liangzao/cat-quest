@@ -1,4 +1,4 @@
-import { catCost, describeEffect, describeTrait, star } from '@/game/cats';
+import { catCost, catImg, describeEffect, describeTrait, star } from '@/game/cats';
 import { CAT_TYPE_COLOR, CAT_TYPE_LABEL } from '@/game/types';
 import type { CatDef, CatInstance } from '@/game/types';
 import { cn } from '@/lib/utils';
@@ -36,7 +36,11 @@ export function CatCard({
     >
       <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-lg bg-gradient-to-r', CAT_TYPE_COLOR[def.type])} />
       <div className="flex items-center gap-1.5">
-        <span className={cn(size === 'sm' ? 'text-xl' : 'text-2xl')}>{def.emoji}</span>
+        <img
+          src={catImg(def.id)}
+          alt={def.name}
+          className={cn('shrink-0 rounded-full bg-slate-800/70 object-contain', size === 'sm' ? 'h-8 w-8' : 'h-11 w-11')}
+        />
         <div className="min-w-0 flex-1">
           <div className={cn('font-bold truncate', size === 'sm' ? 'text-xs' : 'text-sm')}>{def.name}</div>
           <div className="text-[10px] text-amber-300">{star(def.rarity)}</div>
