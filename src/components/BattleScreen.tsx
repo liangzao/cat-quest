@@ -57,6 +57,24 @@ function CatTip({ inst, open }: { inst: CatInstance; open?: boolean }) {
   );
 }
 
+/** 初始资源面板里的猫猫卡：悬停/长按查看数值 */
+function ModalCat({ inst }: { inst: CatInstance }) {
+  const def = CAT_MAP[inst.defId];
+  const tip = useLongTip();
+  return (
+    <button
+      onClick={tip.click(() => {})}
+      {...tip.touch}
+      className="group relative w-24 rounded-xl border border-slate-600 bg-slate-800/80 p-2 text-center transition hover:scale-[1.04]"
+    >
+      <CatTip inst={inst} open={tip.tipOpen} />
+      <div className="text-3xl">{def.emoji}</div>
+      <div className="mt-1 text-xs font-bold">{def.name}</div>
+      <div className="text-[10px] text-amber-300">{star(def.rarity)} · {CAT_TYPE_LABEL[def.type]}</div>
+    </button>
+  );
+}
+
 /** 长按 400ms 打开悬浮卡（手机端无悬停）；悬浮卡打开时再点一下只关闭、不触发卡片点击 */
 function useLongTip() {
   const [tipOpen, setTipOpen] = useState(false);
@@ -449,13 +467,7 @@ export function BattleScreen({
               猫猫与钻石仅本关有效，胜负都清空。
             </p>
             <div className="mt-3 flex justify-center gap-2">
-              {st.hand.map((inst) => (
-                <div key={inst.uid} className="w-24 rounded-xl border border-slate-600 bg-slate-800/80 p-2">
-                  <div className="text-3xl">{CAT_MAP[inst.defId].emoji}</div>
-                  <div className="mt-1 text-xs font-bold">{CAT_MAP[inst.defId].name}</div>
-                  <div className="text-[10px] text-amber-300">{star(CAT_MAP[inst.defId].rarity)} · {CAT_TYPE_LABEL[CAT_MAP[inst.defId].type]}</div>
-                </div>
-              ))}
+              {st.hand.map((inst) => <ModalCat key={inst.uid} inst={inst} />)}
             </div>
             {startDiamonds > 0 && (
               <div className="mt-2 text-sm font-bold text-cyan-300">💎 开局钻石 {fmt(startDiamonds)}</div>
