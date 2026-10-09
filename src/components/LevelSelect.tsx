@@ -54,6 +54,9 @@ export function LevelSelect({
                     {l.dmgCap ? ` · ⛔${fmt(l.dmgCap)}` : ''}
                     {l.foodScale !== 1 ? ` · 🍖×${l.foodScale}` : ''}
                   </div>
+                  {rec?.hpLeft !== undefined && rec.hpLeft < l.hp && !rec.completed && (
+                    <div className="mt-1 text-[11px] text-orange-300">🔥 已削弱至 {fmt(rec.hpLeft)}，再冲一次！</div>
+                  )}
                   {rec && (rec.bestHit > 0 || rec.bestTotal > 0) && (
                     <div className="mt-1 text-[11px] text-amber-300">
                       最高单发 {fmt(rec.bestHit)} · 单行动最高 {fmt(rec.bestTotal)}

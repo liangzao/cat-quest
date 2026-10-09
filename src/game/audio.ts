@@ -5,7 +5,7 @@ let bgmStarted = false;
 
 function get(name: string): HTMLAudioElement {
   if (!cache[name]) {
-    cache[name] = new Audio(`/assets/${name}`);
+    cache[name] = new Audio((import.meta.env.BASE_URL as string) + `assets/${name}`);
     cache[name].preload = 'auto';
   }
   return cache[name];

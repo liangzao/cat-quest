@@ -1,58 +1,97 @@
 import { useEffect, useRef, useState } from 'react';
-import { CAT_MAP, catCost } from '@/game/cats';
-import { fmt, RUN_GACHA_COST, SUMMON_LIMIT, victoryReward } from '@/game/balance';
-import { createBattle, endTurn, resolveAction, summonRunCat } from '@/game/engine';
+import { CAT_MAP, catCost, star } from '@/game/cats';
+import { fmt, DRAW_COST, SELL_PRICE, START_HAND, victoryReward } from '@/game/balance';
+import { createBattle, drawCard, endTurn, placeCard, resolveAction, sellCard, unplaceCard } from '@/game/engine';
+import { drawHand } from '@/game/gacha';
 import { playBgm, playSfx, restoreMute, setMuted, isMuted } from '@/game/audio';
-import type { BattleState, CatInstance, LevelDef, Placement } from '@/game/types';
+import type { BattleState, CatInstance, CatType, LevelDef } from '@/game/types';
+import { CAT_TYPE_COLOR, CAT_TYPE_LABEL, SLOT_LIMIT } from '@/game/types';
 import { Button } from '@/components/ui/button';
-import { rollColor } from './CatCard';
 import { cn } from '@/lib/utils';
 
 export interface RunResult {
   win: boolean;
+  retreated?: boolean;
+  hpLeft: number;
   bestHit: number;
   bestTotal: number;
   totalDealt: number;
   turnsLeft: number;
   diamondEarned: number;
-  summonedCount: number;
+}
+
+const COLS: { type: CatType; hint: string }[] = [
+  { type: 'support', hint: '▼ 最后行动：回响与后勤' },
+  { type: 'partner', hint: '主角随伙伴后出手' },
+  { type: 'vanguard', hint: '▲ 从上到下行动（最先）' },
+];
+
+function HandCard({ inst, selected, onClick }: { inst: CatInstance; selected: boolean; onClick: () => void }) {
+  const def = CAT_MAP[inst.defId];
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'relative w-24 shrink-0 rounded-xl border-2 bg-slate-900/90 p-1.5 text-left transition-all sm:w-28',
+        def.rarity === 2 ? 'border-amber-400/70' : def.rarity === 3 ? 'border-fuchsia-400/80 shadow-[0_0_12px_rgba(232,121,249,0.35)]' : 'border-slate-500/70',
+        selected && 'ring-4 ring-yellow-300 scale-105',
+        onClick && 'cursor-pointer hover:scale-[1.04] active:scale-95',
+      )}
+    >
+      <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-lg bg-gradient-to-r', CAT_TYPE_COLOR[def.type])} />
+      <div className="flex items-center gap-1">
+        <span className="text-xl leading-none">{def.emoji}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[11px] font-bold leading-tight">{def.name}</div>
+          <div className="text-[9px] text-slate-400">{star(def.rarity)} · {CAT_TYPE_LABEL[def.type].slice(0, 2)}</div>
+        </div>
+      </div>
+      {inst.level > 1 && (
+        <div className="absolute -right-1 -top-1 rounded-full bg-sky-600 px-1 text-[9px] font-black text-white">Lv.{inst.level}</div>
+      )}
+    </button>
+  );
 }
 
 function StackCol({
-  title, color, cats, heroUnder, food,
+  type, st, highlightUid, onUnplace,
 }: {
-  title: string;
-  color: string;
-  cats: CatInstance[];
-  heroUnder?: boolean;
-  food: number;
+  type: CatType;
+  st: BattleState;
+  highlightUid: string | null;
+  onUnplace: (uid: string) => void;
 }) {
+  const cats = st.placement[type];
+  const limit = SLOT_LIMIT[type];
+  const heroUnder = type === 'partner';
   return (
-    <div className="flex min-h-48 flex-1 flex-col rounded-xl border border-slate-700 bg-slate-900/50 p-2">
-      <div className={cn('mb-2 rounded bg-gradient-to-r px-1 py-0.5 text-center text-xs font-black text-black', color)}>
-        {title}
+    <div className="flex min-h-56 flex-1 flex-col rounded-xl border border-slate-700 bg-slate-900/50 p-2">
+      <div className={cn('mb-2 flex items-center justify-center gap-1 rounded bg-gradient-to-r px-1 py-0.5 text-xs font-black text-black', CAT_TYPE_COLOR[type])}>
+        {CAT_TYPE_LABEL[type]}
+        <span className="rounded bg-black/40 px-1 text-[10px]">{cats.length}/{limit}</span>
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
         {cats.map((inst) => {
           const def = CAT_MAP[inst.defId];
           const cost = def.traits.some((t) => t.kind === 'free') ? 0 : catCost(def);
-          const starving = cost > food;
+          const starving = cost > st.food;
+          const hl = highlightUid === inst.uid;
           return (
-            <div
+            <button
               key={inst.uid}
+              onClick={() => onUnplace(inst.uid)}
+              title="点击撤回手牌"
               className={cn(
-                'flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800/80 px-2 py-1.5 text-sm',
-                starving && 'opacity-45',
+                'flex items-center gap-1.5 rounded-lg border bg-slate-800/80 px-2 py-1.5 text-sm text-left transition-all',
+                hl ? 'border-yellow-300 ring-2 ring-yellow-300 scale-105 bg-slate-700' : 'border-slate-600',
+                starving && !hl && 'opacity-45',
               )}
             >
-              <span className="text-xl">{def.emoji}</span>
+              <span className={cn('text-xl', hl && 'animate-bounce')}>{def.emoji}</span>
               <span className="flex-1 truncate font-bold">{def.name}</span>
-              <span className="text-[10px] font-bold text-sky-300">Lv.{inst.level}</span>
-              <span className={cn('text-[10px]', inst.roll >= 1.2 ? 'text-fuchsia-300' : 'text-slate-400')}>
-                {Math.round(inst.roll * 100)}%
-              </span>
+              {inst.level > 1 && <span className="rounded bg-sky-900/80 px-1 text-[10px] font-bold text-sky-300">Lv.{inst.level}</span>}
               <span className="text-[11px] text-slate-400">{cost === 0 ? '免费' : `🍖${cost}`}</span>
-            </div>
+            </button>
           );
         })}
         {heroUnder && (
@@ -65,12 +104,10 @@ function StackCol({
           </div>
         )}
         {cats.length === 0 && !heroUnder && (
-          <div className="flex flex-1 items-center justify-center text-xs text-slate-600">（空）</div>
+          <div className="flex flex-1 items-center justify-center text-xs text-slate-600">（点击手牌「上场」）</div>
         )}
       </div>
-      <div className="mt-1 text-center text-[10px] text-slate-500">
-        {title.includes('先锋') ? '▲ 从上到下行动（最先）' : title.includes('伙伴') ? '▲ 主角随伙伴后出手' : title === '援军' ? '▼ 最后行动 · 不耗粮' : '▼ 最后行动'}
-      </div>
+      <div className="mt-1 text-center text-[10px] text-slate-500">{COLS.find((c) => c.type === type)!.hint}</div>
     </div>
   );
 }
@@ -113,22 +150,23 @@ function fmtPct(p: number): string {
 }
 
 export function BattleScreen({
-  level, placement, foodCap, startDiamonds = 0, onExit, onRetreat, onNext,
+  level, foodCap, startDiamonds = 0, hpLeft, onFinish,
 }: {
   level: LevelDef;
-  placement: Placement;
   foodCap: number;
   startDiamonds?: number;
-  onExit: (result: RunResult) => void;
-  onRetreat: () => void;
-  onNext?: () => void;
+  hpLeft?: number;
+  onFinish: (result: RunResult) => void;
 }) {
-  const [st, setSt] = useState<BattleState>(() => createBattle(level, placement, foodCap, startDiamonds));
+  const [st, setSt] = useState<BattleState>(() =>
+    createBattle(level, foodCap, { startDiamonds, initialHand: drawHand(START_HAND), hpLeft }));
   const [flash, setFlash] = useState(0);
   const [muted, setMutedState] = useState(isMuted());
-  const [showSummon, setShowSummon] = useState(false);
-  const [lastPull, setLastPull] = useState<CatInstance | null>(null);
-  const reported = useRef(false);
+  const [sel, setSel] = useState<string | null>(null); // 选中的手牌 uid
+  const [started, setStarted] = useState(false);       // 初始资源展示阶段
+  const [busy, setBusy] = useState(false);             // 攻击/结束回合冷却（含动画）
+  const [highlightUid, setHighlightUid] = useState<string | null>(null);
+  const timers = useRef<number[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -136,43 +174,26 @@ export function BattleScreen({
     setMutedState(isMuted());
     const unlock = () => playBgm();
     window.addEventListener('pointerdown', unlock, { once: true });
-    return () => window.removeEventListener('pointerdown', unlock);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      timers.current.forEach((t) => window.clearTimeout(t));
+    };
   }, []);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [st.log]);
 
-  useEffect(() => {
-    if (st.over && !reported.current) {
-      reported.current = true;
-      playSfx(st.over === 'win' ? 'win' : 'click');
-      onExit({
-        win: st.over === 'win',
-        bestHit: st.bestHit,
-        bestTotal: st.bestAction,
-        totalDealt: st.totalDealt,
-        turnsLeft: Math.max(0, level.maxTurns - st.turn),
-        diamondEarned: st.diamondEarned,
-        summonedCount: st.summoned.length,
-      });
-    }
-  }, [st.over]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const act = () => {
-    if (st.over) return;
-    playSfx('hit');
-    setFlash((f) => f + 1);
-    setSt((s) => resolveAction(s));
-  };
-
-  const summon = () => {
-    if (st.over) return;
-    const r = summonRunCat(st);
-    if (!r) return;
-    playSfx('gacha');
-    setLastPull(r.inst);
-    setSt(r.st);
+  const finish = (win: boolean, retreated = false) => {
+    onFinish({
+      win, retreated,
+      hpLeft: st.fortressHp,
+      bestHit: st.bestHit,
+      bestTotal: st.bestAction,
+      totalDealt: st.totalDealt,
+      turnsLeft: Math.max(0, level.maxTurns - st.turn),
+      diamondEarned: st.diamondEarned,
+    });
   };
 
   const toggleMute = () => {
@@ -181,6 +202,45 @@ export function BattleScreen({
     setMutedState(m);
   };
 
+  /** 按行动顺序依次亮起猫猫卡，期间锁定按钮（≥1 秒，防误触） */
+  const playOrderAnimation = (order: string[]) => {
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    const step = 150;
+    order.forEach((uid, i) => {
+      timers.current.push(window.setTimeout(() => setHighlightUid(uid), i * step));
+    });
+    const total = Math.max(1000, order.length * step + 400);
+    timers.current.push(window.setTimeout(() => { setHighlightUid(null); setBusy(false); }, total));
+  };
+
+  const act = () => {
+    if (st.over || busy) return;
+    playSfx('hit');
+    setFlash((f) => f + 1);
+    setBusy(true);
+    setSel(null);
+    setSt((s) => {
+      const next = resolveAction(s);
+      playOrderAnimation(next.lastOrder);
+      return next;
+    });
+  };
+
+  const endTurnClick = () => {
+    if (st.over || busy) return;
+    setBusy(true);
+    timers.current.push(window.setTimeout(() => setBusy(false), 1000));
+    setSt((s) => endTurn(s));
+  };
+
+  const retreat = () => {
+    if (st.over) return;
+    finish(false, true);
+  };
+
+  const selInst = sel ? st.hand.find((c) => c.uid === sel) : null;
+  const selDef = selInst ? CAT_MAP[selInst.defId] : null;
   const hpPct = (st.fortressHp / st.fortressMax) * 100;
 
   return (
@@ -223,10 +283,8 @@ export function BattleScreen({
           {Array.from({ length: st.ap }).map((_, i) => <span key={i} className="text-xl text-yellow-300">●</span>)}
           {Array.from({ length: Math.max(0, st.apMax + st.apBonus - st.ap) }).map((_, i) => <span key={i} className="text-xl text-slate-700">○</span>)}
         </span>
-        <span className="text-lg">🍖 <b className="text-orange-300">{st.food}</b><span className="text-sm text-slate-400">/{foodCap}</span></span>
-        <span className="text-lg" title="关卡钻石：召唤援军用，胜负都清空">💎 <b className="text-cyan-300">{fmt(st.diamonds)}</b></span>
-        {st.summoned.length > 0 && <span className="text-sm text-violet-300">援军 ×{st.summoned.length}</span>}
-        {st.refundPool > 0 && <span className="text-sm text-emerald-300">（存粮 +{st.refundPool}）</span>}
+        <span className="text-lg" title="猫粮每回合开始回满一次；勇者每行动一次扣除出手猫猫的猫粮">🍖 <b className="text-orange-300">{st.food}</b><span className="text-sm text-slate-400">/{foodCap}</span></span>
+        <span className="text-lg" title="关卡钻石：抽卡/出售用，胜负都清空">💎 <b className="text-cyan-300">{fmt(st.diamonds)}</b></span>
         <span className="ml-auto text-sm text-slate-400">最高单发 <b className="text-yellow-300">{fmt(st.bestHit)}</b></span>
         <button onClick={toggleMute} className="rounded-lg bg-slate-700 px-2 py-0.5 text-sm hover:bg-slate-500">
           {muted ? '🔇' : '🔊'}
@@ -244,6 +302,7 @@ export function BattleScreen({
                 f.kind === 'hit' ? (f.big ? 'big-num text-yellow-300' : 'text-3xl text-yellow-200') : '',
                 f.kind === 'echo' && 'text-xl text-violet-300',
                 f.kind === 'vanguard' && 'text-base text-orange-300',
+                f.kind === 'diamond' && 'text-lg text-cyan-300',
                 f.kind === 'info' && 'text-xs text-sky-300',
               )}
               style={{ left: `${f.x}%`, top: `${f.y}%` }}
@@ -254,10 +313,40 @@ export function BattleScreen({
         </div>
 
         <div className="flex gap-2.5">
-          <StackCol title="支援猫猫" color="from-violet-400 to-purple-500" cats={st.placement.support} food={st.food} />
-          <StackCol title="伙伴猫猫" color="from-sky-400 to-blue-500" cats={st.placement.partner} heroUnder food={st.food} />
-          <StackCol title="先锋猫猫" color="from-orange-400 to-red-500" cats={[...st.placement.vanguard, ...st.spawned]} food={st.food} />
-          <StackCol title="援军" color="from-fuchsia-400 to-pink-500" cats={st.summoned} food={st.food} />
+          <StackCol type="support" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'support', uid))} />
+          <StackCol type="partner" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'partner', uid))} />
+          <StackCol type="vanguard" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'vanguard', uid))} />
+        </div>
+      </div>
+
+      {/* 手牌区 */}
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-2">
+        <div className="mb-1.5 flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-400">🃏 手牌（{st.hand.length}）— 点击选择，上场只能放进对应类型的栏</span>
+          {selInst && selDef && (
+            <span className="ml-auto flex items-center gap-1.5">
+              <Button
+                size="sm"
+                className="h-7 bg-gradient-to-r from-sky-600 to-blue-700 px-3 text-xs font-bold"
+                onClick={() => { setSt((s) => placeCard(s, selInst.uid)); setSel(null); }}
+              >
+                ⬆ 放入{CAT_TYPE_LABEL[selDef.type]}
+              </Button>
+              <Button
+                size="sm" variant="outline"
+                className="h-7 border-amber-500/50 px-3 text-xs font-bold text-amber-300"
+                onClick={() => { setSt((s) => sellCard(s, selInst.uid)); setSel(null); }}
+              >
+                💰 出售 +{SELL_PRICE}
+              </Button>
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {st.hand.map((inst) => (
+            <HandCard key={inst.uid} inst={inst} selected={sel === inst.uid} onClick={() => setSel(sel === inst.uid ? null : inst.uid)} />
+          ))}
+          {st.hand.length === 0 && <div className="flex h-20 flex-1 items-center justify-center text-xs text-slate-600">（手牌为空，抽卡获得猫猫）</div>}
         </div>
       </div>
 
@@ -265,24 +354,24 @@ export function BattleScreen({
       <div className="flex items-center gap-2">
         <Button
           onClick={act}
-          disabled={!!st.over}
+          disabled={!!st.over || busy || !started}
           className="h-16 flex-1 bg-gradient-to-r from-amber-500 to-red-600 text-2xl font-black text-black hover:from-amber-400 hover:to-red-500"
         >
-          ⚔️ 攻击！
+          {busy ? '…' : '⚔️ 攻击！'}
         </Button>
         <Button
           variant="outline"
-          onClick={() => setShowSummon(true)}
-          disabled={!!st.over}
+          onClick={() => { playSfx('gacha'); setSt((s) => drawCard(s)); }}
+          disabled={!!st.over || busy || !started || st.diamonds < DRAW_COST}
           className="h-16 border-fuchsia-500/50 bg-fuchsia-950/40 px-4 text-base font-bold text-fuchsia-200 hover:bg-fuchsia-900/60"
         >
-          🎰 召唤<br /><span className="text-xs font-normal">💎{RUN_GACHA_COST}</span>
+          🎴 抽卡<br /><span className="text-xs font-normal">💎{DRAW_COST}</span>
         </Button>
-        <Button variant="outline" className="h-16 px-4 text-base" onClick={() => setSt((s) => endTurn(s))} disabled={!!st.over}>
+        <Button variant="outline" className="h-16 px-4 text-base" onClick={endTurnClick} disabled={!!st.over || busy || !started}>
           结束回合
         </Button>
-        <Button variant="outline" className="h-16 px-4 text-base" onClick={onRetreat} disabled={!!st.over}>
-          🏕️ 撤回整队
+        <Button variant="outline" className="h-16 px-4 text-base" onClick={retreat} disabled={!!st.over || !started} title="撤回整队：本关获得的猫猫与钻石清空，但堡垒已受的伤害会保留">
+          🏕️ 撤回
         </Button>
       </div>
 
@@ -293,42 +382,40 @@ export function BattleScreen({
         </div>
       </div>
 
-      {/* 局内召唤弹窗 */}
-      {showSummon && !st.over && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onClick={() => setShowSummon(false)}>
-          <div className="w-full max-w-sm rounded-2xl border-2 border-fuchsia-500/50 bg-slate-900 p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black text-fuchsia-300">🎰 召唤援军</h3>
-              <button onClick={() => setShowSummon(false)} className="rounded-lg bg-slate-700 px-2 py-0.5 text-sm hover:bg-slate-500">✕</button>
-            </div>
+      {/* 初始资源展示阶段 */}
+      {!started && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border-2 border-amber-500/50 bg-slate-900 p-5 text-center">
+            <h3 className="text-xl font-black text-amber-300">🎒 局内初始资源</h3>
             <p className="mt-1 text-xs text-slate-400">
-              消耗 <b className="text-cyan-300">{RUN_GACHA_COST}💎 关卡钻石</b> 召唤一只临时猫猫立即参战（等级=队伍平均等级，<b className="text-cyan-300">不消耗猫粮</b>，援军最后行动，最多 {SUMMON_LIMIT} 只）。
-              援军与钻石<b className="text-amber-300">无论胜负都会清空</b>。
+              本关开始时随机发放 3 张猫猫卡{startDiamonds > 0 && `，并带入兑换的 💎${fmt(startDiamonds)}`}
+              {hpLeft !== undefined && hpLeft < level.hp && <>；堡垒已被削弱至 <b className="text-orange-300">{fmt(hpLeft)}</b></>}。
+              猫猫与钻石仅本关有效，胜负都清空。
             </p>
-            {lastPull && (
-              <div className="mx-auto mt-3 w-40 rounded-xl border border-slate-600 bg-slate-800/70 p-3 text-center">
-                <div className="text-4xl">{CAT_MAP[lastPull.defId].emoji}</div>
-                <div className="mt-1 text-sm font-bold">{CAT_MAP[lastPull.defId].name}</div>
-                <div className={cn('text-xs font-bold', rollColor(lastPull.roll))}>个体值 {Math.round(lastPull.roll * 100)}%</div>
-                <div className="mt-1 text-[10px] text-slate-500">{CAT_MAP[lastPull.defId].desc}</div>
-              </div>
-            )}
-            <div className="mt-3 flex items-center gap-2">
-              <Button
-                className="flex-1 bg-gradient-to-r from-fuchsia-600 to-purple-700 font-black"
-                disabled={st.diamonds < RUN_GACHA_COST}
-                onClick={summon}
-              >
-                召唤 ×1（{RUN_GACHA_COST}💎）
-              </Button>
-              <span className="text-sm font-bold text-cyan-300">💎{fmt(st.diamonds)}</span>
+            <div className="mt-3 flex justify-center gap-2">
+              {st.hand.map((inst) => (
+                <div key={inst.uid} className="w-24 rounded-xl border border-slate-600 bg-slate-800/80 p-2">
+                  <div className="text-3xl">{CAT_MAP[inst.defId].emoji}</div>
+                  <div className="mt-1 text-xs font-bold">{CAT_MAP[inst.defId].name}</div>
+                  <div className="text-[10px] text-amber-300">{star(CAT_MAP[inst.defId].rarity)} · {CAT_TYPE_LABEL[CAT_MAP[inst.defId].type]}</div>
+                </div>
+              ))}
             </div>
+            {startDiamonds > 0 && (
+              <div className="mt-2 text-sm font-bold text-cyan-300">💎 开局钻石 {fmt(startDiamonds)}</div>
+            )}
+            <Button
+              className="mt-4 w-full bg-gradient-to-r from-amber-500 to-orange-600 text-lg font-black text-black hover:from-amber-400 hover:to-orange-500"
+              onClick={() => { playSfx('click'); setStarted(true); }}
+            >
+              ⚔️ 排好阵容，开始进攻！
+            </Button>
           </div>
         </div>
       )}
 
       {/* 结算 */}
-      {st.over && (
+      {st.over && started && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border-2 border-slate-600 bg-slate-900 p-6 text-center">
             {st.over === 'win' ? (
@@ -345,20 +432,18 @@ export function BattleScreen({
                 <div className="text-base">获得 <b className="text-fuchsia-300">🏆{fmt(victoryReward(level.chapter, Math.max(0, level.maxTurns - st.turn)))} 勇者徽章</b>
                   <span className="text-xs text-slate-400">（剩余回合越多越多）</span></div>
               ) : (
-                <div className="text-xs text-slate-400">胜利才能获得 🏆 勇者徽章，再试一次！</div>
+                <div className="text-xs text-orange-200">堡垒还剩 <b>{fmt(st.fortressHp)}</b> —— 已造成的伤害会保留，调整阵容再冲一次！</div>
               )}
               <div className="text-xs text-slate-400">
-                本关获得 💎{fmt(st.diamondEarned)}、援军 ×{st.summoned.length} —— 关卡内资源已清空
+                本关累计获得 💎{fmt(st.diamondEarned)} —— 关卡内资源已清空
               </div>
             </div>
             <div className="mt-4 flex flex-col gap-2">
-              {st.over === 'win' && onNext && (
-                <Button className="bg-gradient-to-r from-amber-500 to-orange-600 font-black text-black" onClick={onNext}>
-                  ⬇ 下一层
-                </Button>
-              )}
-              <Button variant="outline" onClick={onRetreat}>
-                🏕️ 回基地抽卡 / 整队
+              <Button
+                className="bg-gradient-to-r from-amber-500 to-orange-600 font-black text-black"
+                onClick={() => finish(st.over === 'win')}
+              >
+                {st.over === 'win' ? '🎉 领取奖励，继续' : '💪 返回准备，再次挑战'}
               </Button>
             </div>
           </div>

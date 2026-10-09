@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { fmt } from '@/game/balance';
+import { fmt, foodCap } from '@/game/balance';
 import { playBgm } from '@/game/audio';
 import type { SaveData } from '@/game/types';
 import { Button } from '@/components/ui/button';
@@ -37,8 +37,7 @@ export function MainMenu({
         </p>
         <div className="mt-2 flex justify-center gap-2 text-sm">
           <span className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-950/70 px-2.5 py-1 font-bold text-fuchsia-200">🏆 {fmt(save.badges)}</span>
-          <span className="rounded-lg border border-slate-600 bg-slate-900/70 px-2.5 py-1 font-bold text-slate-300">🐱 {save.collection.length} 只</span>
-          <span className="rounded-lg border border-orange-500/40 bg-orange-950/70 px-2.5 py-1 font-bold text-orange-200">🍖 上限 {fmt(12 + save.foodUpgrade * 3)}</span>
+          <span className="rounded-lg border border-orange-500/40 bg-orange-950/70 px-2.5 py-1 font-bold text-orange-200">🍖 上限 {fmt(foodCap(save.foodUpgrade))}</span>
         </div>
       </div>
 

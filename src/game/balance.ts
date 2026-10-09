@@ -16,35 +16,28 @@ function trim(v: number): string {
   return v >= 100 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
 }
 
-// ── 养成数值 ─────────────────────────────────────────────────────
-/** 效果强度倍率：个体值 × 等级成长（0.55/级，指数成长的爽感来源） */
-export const powerMult = (level: number, roll: number) => roll * (1 + 0.55 * (level - 1));
-/** 次数类倍率（攻击次数/额外生效次数）：温和成长 */
-export const utilMult = (level: number, roll: number) => 1 + 0.18 * (level - 1) + (roll - 1) * 0.5;
+// ── 局内经济（💎 关卡钻石，胜负都清空）──────────────────────────
+/** 抽卡费用 */
+export const DRAW_COST = 80;
+/** 出售猫猫获得钻石 */
+export const SELL_PRICE = 40;
+/** 开局手牌数量 */
+export const START_HAND = 3;
+/** 猫猫等级上限（同名卡合成升级） */
+export const MAX_LEVEL = 5;
 
-/** 猫猫升级费用（从 level 升到 level+1） */
-export const upgradeCost = (level: number) => Math.round(12 * Math.pow(level, 1.5));
-
-/** 收藏召唤费用（🏆 勇者徽章，局外资源） */
-export const GACHA_COST = 250;
-
-/** 局内召唤费用（💎 关卡钻石，胜负都清空） */
-export const RUN_GACHA_COST = 100;
-
-/** 每关援军数量上限 */
-export const SUMMON_LIMIT = 8;
-
-/** 关卡内钻石获取：每次行动基础 + 按伤害（每 200 伤害 +1） */
-export const DIAMOND_BASE = 15;
-export const DIAMOND_DIV = 100;
+/** 每次行动固定获得的钻石（≥1 张抽卡） */
+export const DIAMOND_BASE = 150;
+/** 伤害奖励：每 dealt/DIAMOND_DIV 点伤害 +1 钻石 */
+export const DIAMOND_DIV = 5;
 
 /** 🏆 → 💎 兑换比例（1 徽章 = 4 开局钻石） */
 export const EXCHANGE_RATE = 4;
 /** 兑换档位（徽章数） */
 export const EXCHANGE_PACKS = [25, 100, 400];
 
-/** 猫粮上限：基础 + 升级 */
-export const foodCap = (upLevel: number) => 12 + upLevel * 3;
+/** 猫粮上限：基础 20 + 每级 +4 */
+export const foodCap = (upLevel: number) => 20 + upLevel * 4;
 export const foodUpgradeCost = (upLevel: number) => Math.round(300 * Math.pow(2, upLevel));
 export const MAX_FOOD_UPGRADE = 12;
 
@@ -53,12 +46,9 @@ export function victoryReward(chapter: number, turnsLeft: number): number {
   return 100 + chapter * 40 + Math.max(0, turnsLeft) * 15;
 }
 
-/** 抽卡稀有度权重 */
+/** 抽卡稀有度权重（★1 / ★2 / ★3） */
 export const GACHA_WEIGHTS = [
-  { rarity: 1, w: 62 },
-  { rarity: 2, w: 30 },
-  { rarity: 3, w: 8 },
+  { rarity: 1, w: 70 },
+  { rarity: 2, w: 25 },
+  { rarity: 3, w: 5 },
 ];
-
-/** 随机个体值 0.85 ~ 1.25 */
-export const rollValue = () => Math.round((0.85 + Math.random() * 0.4) * 100) / 100;

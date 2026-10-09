@@ -1,12 +1,14 @@
 import { CATS } from './cats';
-import { GACHA_WEIGHTS, rollValue } from './balance';
+import { GACHA_WEIGHTS } from './balance';
 import type { CatInstance } from './types';
 
 let gachaUid = 1;
 const newUid = () => `g${Date.now().toString(36)}-${gachaUid++}`;
 
-/** 单抽：按稀有度权重随机一只猫猫，带随机个体值 */
-export function pullOne(): { inst: CatInstance; rarity: 1 | 2 | 3 } {
+/** 单抽：先随机类型（三类均分），再按稀有度权重（★1:70 / ★2:25 / ★3:5）抽该类型下的猫猫，1 级 */
+export function drawOne(): { inst: CatInstance; rarity: 1 | 2 | 3 } {
+  const types: ('vanguard' | 'partner' | 'support')[] = ['vanguard', 'partner', 'support'];
+  const type = types[Math.floor(Math.random() * types.length)];
   const total = GACHA_WEIGHTS.reduce((s, w) => s + w.w, 0);
   let r = Math.random() * total;
   let rarity: 1 | 2 | 3 = 1;
@@ -14,11 +16,13 @@ export function pullOne(): { inst: CatInstance; rarity: 1 | 2 | 3 } {
     if (r < w.w) { rarity = w.rarity as 1 | 2 | 3; break; }
     r -= w.w;
   }
-  const pool = CATS.filter((c) => c.rarity === rarity);
+  let pool = CATS.filter((c) => c.type === type && c.rarity === rarity);
+  if (!pool.length) pool = CATS.filter((c) => c.type === type);
   const def = pool[Math.floor(Math.random() * pool.length)];
-  return { inst: { uid: newUid(), defId: def.id, level: 1, roll: rollValue() }, rarity };
+  return { inst: { uid: newUid(), defId: def.id, level: 1 }, rarity };
 }
 
-export function pullMany(count: number) {
-  return Array.from({ length: count }, () => pullOne());
+/** 开局手牌：连抽 n 张 */
+export function drawHand(n: number): CatInstance[] {
+  return Array.from({ length: n }, () => drawOne().inst);
 }

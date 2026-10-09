@@ -1,4 +1,4 @@
-// ── 猫猫勇者 · 核心类型 ─────────────────────────────────────────────
+// ── 猫猫勇者 · 核心类型（v4：星级点数制，局内抽卡）────────────────────
 
 export type CatType = 'vanguard' | 'partner' | 'support';
 
@@ -14,34 +14,43 @@ export const CAT_TYPE_COLOR: Record<CatType, string> = {
   support: 'from-violet-500 to-purple-600',
 };
 
-/** 猫猫词条（行动效果）。x 取 1~3，y 取 10% 的整数倍（存小数，0.2 = 20%）。 */
+/** 各分栏上场数量上限 */
+export const SLOT_LIMIT: Record<CatType, number> = {
+  vanguard: 4,
+  partner: 6,
+  support: 4,
+};
+
+/**
+ * 猫猫词条（行动效果）。数值为 1 级基准：★数已折算在内
+ * （如号角猫 2★：全体加成 0.1/级 → 1 级 = +10%，5 级 = +50%）。
+ * 升级只提升等级，全部词条按等级线性成长。
+ */
 export type CatEffect =
-  | { kind: 'strike'; dmg: number; times: number }          // 造成 times 次 dmg 伤害
-  | { kind: 'repeatBelow'; count: number; times: number }   // 使行动顺序靠后的 count 只猫猫效果额外生效 times 次
-  | { kind: 'allCatBuff'; pct: number }                     // 使所有猫猫的加成提高 pct
-  | { kind: 'allExtraBuff'; pct: number }                   // 使所有猫猫的额外数值加成效果提高 pct
-  | { kind: 'dmgBelow'; count: number; flat: number }       // 使行动顺序靠后的 count 只猫猫造成的伤害提高 flat 点
-  | { kind: 'heroIncFlat'; value: number }                  // 主角提高数值 +x
-  | { kind: 'heroIncPct'; pct: number }                     // 主角提高百分比 +y
-  | { kind: 'heroExtraFlat'; value: number }                // 主角额外数值 +x
-  | { kind: 'heroExtraPct'; pct: number }                   // 主角额外百分比 +y
-  | { kind: 'heroTotalFlat'; value: number }                // 主角总数值 +x
-  | { kind: 'heroTotalPct'; pct: number }                   // 主角总百分比 +y
-  | { kind: 'heroTIncFlat'; value: number }                 // 主角总提高数值 +x
-  | { kind: 'heroTIncPct'; pct: number }                    // 主角总提高百分比 +y
-  | { kind: 'heroTExtraFlat'; value: number }               // 主角总额外数值 +x
-  | { kind: 'heroTExtraPct'; pct: number }                  // 主角总额外百分比 +y
-  | { kind: 'heroTAllFlat'; value: number }                 // 主角总数值乘区 +x（对全部数值乘区）
-  | { kind: 'heroTAllPct'; pct: number }                    // 主角总百分比乘区 +y（对全部百分比乘区）
-  | { kind: 'echo'; pct: number; times: number }            // 使主角本行动造成的伤害再造成 pct 的 times 次
-  | { kind: 'heroHits'; value: number }                     // 主角次数乘区 +x（本行动攻击次数）
-  | { kind: 'foodRefund'; min: number; max: number };       // 消耗剩余猫粮，返还 min%~max%
+  | { kind: 'strike'; dmg: number; times: number }          // 造成 times 次 dmg 伤害（×等级）
+  | { kind: 'repeatBelow'; count: number; times: number }   // 使行动顺序靠后的 count 只猫猫效果额外生效 times 次（×等级）
+  | { kind: 'allCatBuff'; pct: number }                     // 使所有猫猫的加成提高 pct（×等级）
+  | { kind: 'allExtraBuff'; pct: number }                   // 使所有猫猫的额外数值加成效果提高 pct（×等级）
+  | { kind: 'heroIncFlat'; value: number }                  // 主角提高数值 +x（×等级）
+  | { kind: 'heroIncPct'; pct: number }                     // 主角提高百分比 +y（×等级）
+  | { kind: 'heroExtraFlat'; value: number }                // 主角额外数值 +x（×等级）
+  | { kind: 'heroExtraPct'; pct: number }                   // 主角额外百分比 +y（×等级）
+  | { kind: 'heroTotalFlat'; value: number }                // 主角总数值 +x（×等级）
+  | { kind: 'heroTotalPct'; pct: number }                   // 主角总百分比 +y（×等级）
+  | { kind: 'heroTIncFlat'; value: number }                 // 主角总提高数值 +x（×等级）
+  | { kind: 'heroTIncPct'; pct: number }                    // 主角总提高百分比 +y（×等级）
+  | { kind: 'heroTExtraFlat'; value: number }               // 主角总额外数值 +x（×等级）
+  | { kind: 'heroTExtraPct'; pct: number }                  // 主角总额外百分比 +y（×等级）
+  | { kind: 'heroTAllFlat'; value: number }                 // 主角总数值乘区 +x（对全部数值乘区，×等级）
+  | { kind: 'heroTAllPct'; pct: number }                    // 主角总百分比乘区 +y（对全部百分比乘区，×等级）
+  | { kind: 'echo'; pct: number; times: number }            // 使主角本行动造成的伤害再造成 pct 的 times 次（×等级）
+  | { kind: 'heroHits'; value: number }                     // 主角次数乘区 +x（×等级）
+  | { kind: 'diamondBonus'; pct: number };                  // 本次行动获得的钻石 +pct（×等级）
 
 /** 猫猫特性（特殊情况）。 */
 export type CatTrait =
   | { kind: 'free' }                  // 不消耗猫粮
-  | { kind: 'apPlus'; value: number } // 行动时为本回合提供 value 点行动值上限
-  | { kind: 'spawn' }                 // 行动时在先锋猫猫最下方获得一只无特性的随机先锋猫猫
+  | { kind: 'apPlus'; value: number } // 行动时为本回合提供 value 点行动值
   | { kind: 'doubleFirst' }           // 每回合首次行动时效果翻倍
   | { kind: 'cheap' };                // 猫粮消耗 -1
 
@@ -50,27 +59,27 @@ export interface CatDef {
   name: string;
   emoji: string;
   type: CatType;
-  cost: number; // 魔法猫粮消耗
-  rarity: 1 | 2 | 3;
+  rarity: 1 | 2 | 3; // ★数 = 效果点数
   effects: CatEffect[];
   traits: CatTrait[];
   desc: string;
 }
 
-/** 猫猫实例：抽卡获得，带随机个体值与养成等级 */
+/** 猫猫实例：抽卡获得；同名卡上场自动合成升级（1~5 级） */
 export interface CatInstance {
   uid: string;
   defId: string;
-  level: number;  // 1 起
-  roll: number;   // 个体值 0.85 ~ 1.25
+  level: number; // 1~5
 }
 
-/** 布阵：每种猫猫一叠，数组顺序 = 展示从上到下（也是行动顺序）。 */
+/** 布阵：数组顺序 = 展示从上到下（也是行动顺序）。 */
 export interface Placement {
   support: CatInstance[];
   partner: CatInstance[];
   vanguard: CatInstance[];
 }
+
+export const emptyPlacement = (): Placement => ({ support: [], partner: [], vanguard: [] });
 
 // ── 数值乘区 ────────────────────────────────────────────────────────
 
@@ -123,13 +132,14 @@ export interface FloatingDmg {
   text: string;
   x: number; // 0~100 百分比
   y: number;
-  kind: 'hit' | 'echo' | 'vanguard' | 'heal' | 'info' | 'crit';
+  kind: 'hit' | 'echo' | 'vanguard' | 'heal' | 'info' | 'crit' | 'diamond';
   big?: boolean;
 }
 
 export interface BattleState {
   level: LevelDef;
   placement: Placement;
+  hand: CatInstance[];            // 手牌：抽到的猫猫在此，点击上场/出售
   fortressHp: number;
   fortressMax: number;
   turn: number;
@@ -137,15 +147,13 @@ export interface BattleState {
   apMax: number;
   apBonus: number;
   food: number;
-  foodMax: number; // 每次行动补给猫粮上限
-  refundPool: number;
+  foodMax: number;                // 猫粮上限：每回合开始时回满一次
   diamonds: number;               // 💎 关卡内钻石（胜负都清空）
   diamondEarned: number;          // 本关累计获得（结算展示用）
-  summoned: CatInstance[];        // 局内召唤的援军猫猫（胜负都清空）
-  spawned: CatInstance[];          // spawn 特性生成的猫猫（roll=1, level=1）
   turnActed: Record<string, number>; // uid -> 本回合已行动次数（特性用）
   lastHit: HitBreakdown | null;
   lastTotal: number;
+  lastOrder: string[];            // 上一行动按顺序出手的猫猫 uid（动画用）
   floats: FloatingDmg[];
   log: string[];
   over: 'win' | 'lose' | null;
@@ -161,14 +169,13 @@ export interface LevelRecord {
   bestHit: number;
   bestTotal: number;
   completed: boolean;
+  hpLeft?: number; // 未通关退出时保留的堡垒剩余血量（再进入时续打）
 }
 
 export interface SaveData {
   records: Record<string, LevelRecord>;
   endless: { stage: number; bestHit: number; bestDmgPerCat: number };
   storyCleared: boolean;
-  collection: CatInstance[]; // 玩家拥有的猫猫（含重复，永久）
-  badges: number;           // 🏆 勇者徽章（局外资源，仅胜利获得：抽卡/强化/升上限/兑换开局钻石）
-  foodUpgrade: number;       // 猫粮上限升级次数
-  lastFormation?: Placement; // 上次布阵
+  badges: number;           // 🏆 勇者徽章（局外资源，仅胜利获得：可兑换开局钻石）
+  foodUpgrade: number;      // 猫粮上限升级次数
 }
