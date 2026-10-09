@@ -5,7 +5,7 @@ import { HERO_BASE_AP, HERO_BASE_ATK } from './levels';
 import type {
   BattleState, CatEffect, CatInstance, CatType, FloatingDmg, HitBreakdown, LevelDef, Placement, Zones,
 } from './types';
-import { emptyPlacement, emptyZones, SLOT_LIMIT } from './types';
+import { emptyPlacement, emptyZones, SLOT_LIMIT, CAT_TYPE_LABEL } from './types';
 
 let uidSeq = 1;
 export const newUid = () => `u${uidSeq++}`;
@@ -113,6 +113,65 @@ export function drawCard(prev: BattleState): BattleState {
     diamonds: prev.diamonds - DRAW_COST,
     hand: [...prev.hand, inst],
     log: [...prev.log, `🎴 消耗 ${DRAW_COST}💎 抽卡：${'★'.repeat(def.rarity)} ${def.emoji}${def.name}`].slice(-80),
+  };
+}
+
+/**
+ * 拖拽落点统一入口：手牌→分栏、跨栏移动、栏内重排（插到 toIndex 位置）。
+ * 同名卡自动合成；类型不符或栏满时拒绝并写日志。
+ */
+export function dropCard(prev: BattleState, uid: string, toType: CatType, toIndex: number): BattleState {
+  if (prev.over) return prev;
+  const handInst = prev.hand.find((c) => c.uid === uid);
+  const fromType = (['vanguard', 'partner', 'support'] as CatType[]).find((t) => prev.placement[t].some((c) => c.uid === uid));
+  if (!handInst && !fromType) return prev;
+  const inst = handInst ?? prev.placement[fromType!].find((c) => c.uid === uid)!;
+  const def = CAT_MAP[inst.defId];
+  if (def.type !== toType) {
+    return { ...prev, log: [...prev.log, `⛔ ${def.emoji}${def.name} 是${CAT_TYPE_LABEL[def.type]}，只能放进对应类型的栏`].slice(-80) };
+  }
+
+  const col = prev.placement[toType];
+  const fromIdx = fromType ? col.findIndex((c) => c.uid === uid) : -1;
+
+  // 同名合成（目标栏已有其他同名卡）
+  const existing = col.find((c) => c.defId === inst.defId && c.uid !== uid);
+  if (existing) {
+    if (existing.level >= MAX_LEVEL) {
+      if (handInst) {
+        return {
+          ...prev,
+          hand: prev.hand.filter((c) => c.uid !== uid),
+          diamonds: prev.diamonds + SELL_PRICE,
+          log: [...prev.log, `💰 ${def.emoji}${def.name} 已满 Lv.${MAX_LEVEL}，自动出售 +${SELL_PRICE}💎`].slice(-80),
+        };
+      }
+      return { ...prev, log: [...prev.log, `⛔ ${def.emoji}${def.name} 已满 Lv.${MAX_LEVEL}`].slice(-80) };
+    }
+    const placement = {
+      ...prev.placement,
+      [toType]: col.map((c) => (c.uid === existing.uid ? { ...c, level: c.level + 1 } : c)),
+    };
+    const hand = handInst ? prev.hand.filter((c) => c.uid !== uid) : prev.hand;
+    return { ...prev, placement, hand, log: [...prev.log, `✨ 合成！${def.emoji}${def.name} 升到 Lv.${existing.level + 1}`].slice(-80) };
+  }
+
+  if (fromIdx < 0 && col.length >= SLOT_LIMIT[toType]) {
+    return { ...prev, log: [...prev.log, `⛔ ${CAT_TYPE_LABEL[toType]}栏已满（上限 ${SLOT_LIMIT[toType]} 只）`].slice(-80) };
+  }
+
+  let arr = [...col];
+  if (fromIdx >= 0) arr.splice(fromIdx, 1);
+  let idx = fromIdx >= 0 && fromIdx < toIndex ? toIndex - 1 : toIndex;
+  idx = Math.max(0, Math.min(idx, arr.length));
+  arr.splice(idx, 0, inst);
+  const hand = handInst ? prev.hand.filter((c) => c.uid !== uid) : prev.hand;
+  const verb = handInst ? '上阵' : fromType !== toType ? `移到${CAT_TYPE_LABEL[toType]}` : '调整顺序';
+  return {
+    ...prev,
+    placement: { ...prev.placement, [toType]: arr },
+    hand,
+    log: [...prev.log, `↔ ${def.emoji}${def.name} ${verb}`].slice(-80),
   };
 }
 

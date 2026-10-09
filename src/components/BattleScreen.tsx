@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, DragEvent } from 'react';
 import { CAT_MAP, catCost, describeEffect, describeTrait, star } from '@/game/cats';
 import { fmt, DRAW_COST, SELL_PRICE, START_HAND, victoryReward } from '@/game/balance';
-import { createBattle, drawCard, endTurn, placeCard, resolveAction, sellCard, unplaceCard } from '@/game/engine';
+import { createBattle, drawCard, dropCard, endTurn, placeCard, resolveAction, sellCard, unplaceCard } from '@/game/engine';
 import { drawHand } from '@/game/gacha';
 import { playBgm, playSfx, restoreMute, setMuted, isMuted } from '@/game/audio';
 import type { BattleState, CatInstance, CatType, LevelDef } from '@/game/types';
@@ -25,6 +26,51 @@ const COLS: { type: CatType; hint: string }[] = [
   { type: 'partner', hint: '主角随伙伴后出手' },
   { type: 'vanguard', hint: '▲ 从上到下行动（最先）' },
 ];
+
+const DND_MIME = 'text/cat-uid';
+const getDragUid = (e: DragEvent) => e.dataTransfer.getData(DND_MIME) || null;
+
+/** 城堡场景：随输出逐渐破损坍塌，击破后公主获救 */
+function CastleScene({ st }: { st: BattleState }) {
+  const pct = st.fortressMax > 0 ? st.fortressHp / st.fortressMax : 0;
+  const broken = st.over === 'win';
+  const style: CSSProperties = broken
+    ? { transform: 'rotate(14deg) translateY(36%) scaleY(0.5)', filter: 'brightness(.35) grayscale(.9)' }
+    : pct > 0.66
+      ? {}
+      : pct > 0.33
+        ? { transform: 'rotate(-2deg) translateY(3%)', filter: 'brightness(.85) saturate(.85)' }
+        : { transform: 'rotate(4deg) translateY(10%)', filter: 'brightness(.55) saturate(.6)' };
+  return (
+    <div className="relative h-44 shrink-0 overflow-hidden rounded-xl border border-red-900 bg-slate-950 lg:h-auto lg:w-64">
+      <img
+        src={import.meta.env.BASE_URL + "assets/castle.jpg"}
+        alt="魔王城堡"
+        className="absolute inset-0 h-full w-full object-cover transition-all duration-1000"
+        style={style}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+      {!broken && pct <= 0.33 && (
+        <div className="absolute inset-x-0 bottom-1 flex animate-pulse justify-center gap-2 text-2xl">🔥 💥 🔥</div>
+      )}
+      {!broken && pct <= 0.66 && pct > 0.33 && (
+        <div className="absolute inset-x-0 bottom-1 flex animate-pulse justify-center gap-2 text-xl">💨 🌫️</div>
+      )}
+      {broken && (
+        <>
+          <img
+            src={import.meta.env.BASE_URL + "assets/princess-cat.png"}
+            alt="公主猫"
+            className="absolute bottom-0 left-1/2 h-24 -translate-x-1/2 animate-bounce object-contain drop-shadow-[0_0_18px_rgba(232,121,249,0.8)]"
+          />
+          <div className="absolute inset-x-0 top-2 animate-pulse text-center text-lg font-black text-yellow-300 drop-shadow">
+            ✨ 公主得救！✨
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 /** 悬停/长按悬浮卡：显示猫猫当前等级的具体数值 */
 function CatTip({ inst, open }: { inst: CatInstance; open?: boolean }) {
@@ -92,17 +138,20 @@ function useLongTip() {
   return { tipOpen, touch, click, close: () => setTipOpen(false) };
 }
 
-function HandCard({ inst, selected, onClick }: { inst: CatInstance; selected: boolean; onClick: () => void }) {
+function HandCard({ inst, selected, onClick, canDrag }: { inst: CatInstance; selected: boolean; onClick: () => void; canDrag?: boolean }) {
   const def = CAT_MAP[inst.defId];
   const tip = useLongTip();
   return (
     <button
       onClick={tip.click(onClick)}
       {...tip.touch}
+      draggable={canDrag}
+      onDragStart={(e) => { e.dataTransfer.setData(DND_MIME, inst.uid); e.dataTransfer.effectAllowed = 'move'; }}
       className={cn(
         'group relative w-24 shrink-0 rounded-xl border-2 bg-slate-900/90 p-1.5 text-left transition-all sm:w-28',
         def.rarity === 2 ? 'border-amber-400/70' : def.rarity === 3 ? 'border-fuchsia-400/80 shadow-[0_0_12px_rgba(232,121,249,0.35)]' : 'border-slate-500/70',
         selected && 'ring-4 ring-yellow-300 scale-105',
+        canDrag && 'cursor-grab active:cursor-grabbing',
         onClick && 'cursor-pointer hover:scale-[1.04] active:scale-95',
       )}
     >
@@ -122,7 +171,18 @@ function HandCard({ inst, selected, onClick }: { inst: CatInstance; selected: bo
   );
 }
 
-function FieldCat({ inst, st, hl, onUnplace }: { inst: CatInstance; st: BattleState; hl: boolean; onUnplace: () => void }) {
+function FieldCat({
+  inst, st, hl, onUnplace, canDrag, dropOver, onCatDragOver, onCatDrop,
+}: {
+  inst: CatInstance;
+  st: BattleState;
+  hl: boolean;
+  onUnplace: () => void;
+  canDrag?: boolean;
+  dropOver?: boolean;
+  onCatDragOver?: (e: DragEvent) => void;
+  onCatDrop?: (e: DragEvent) => void;
+}) {
   const def = CAT_MAP[inst.defId];
   const cost = def.traits.some((t) => t.kind === 'free') ? 0 : catCost(def);
   const starving = cost > st.food;
@@ -131,10 +191,16 @@ function FieldCat({ inst, st, hl, onUnplace }: { inst: CatInstance; st: BattleSt
     <button
       onClick={tip.click(onUnplace)}
       {...tip.touch}
-      title="点击撤回手牌"
+      title="点击撤回手牌；可拖动调整顺序"
+      draggable={canDrag}
+      onDragStart={(e) => { e.dataTransfer.setData(DND_MIME, inst.uid); e.dataTransfer.effectAllowed = 'move'; }}
+      onDragOver={onCatDragOver}
+      onDrop={onCatDrop}
       className={cn(
         'group relative flex items-center gap-1.5 rounded-lg border bg-slate-800/80 px-2 py-1.5 text-sm text-left transition-all',
         hl ? 'border-yellow-300 ring-2 ring-yellow-300 scale-105 bg-slate-700' : 'border-slate-600',
+        dropOver && 'border-sky-300 ring-2 ring-sky-300',
+        canDrag && 'cursor-grab active:cursor-grabbing',
         starving && !hl && 'opacity-45',
       )}
     >
@@ -148,25 +214,59 @@ function FieldCat({ inst, st, hl, onUnplace }: { inst: CatInstance; st: BattleSt
 }
 
 function StackCol({
-  type, st, highlightUid, onUnplace,
+  type, st, highlightUid, onUnplace, onDrop,
 }: {
   type: CatType;
   st: BattleState;
   highlightUid: string | null;
   onUnplace: (uid: string) => void;
+  onDrop: (uid: string, toType: CatType, toIndex: number) => void;
 }) {
   const cats = st.placement[type];
   const limit = SLOT_LIMIT[type];
   const heroUnder = type === 'partner';
+  const [colOver, setColOver] = useState(false);
+  const [catOver, setCatOver] = useState<string | null>(null);
+  const clearOver = () => { setColOver(false); setCatOver(null); };
   return (
-    <div className="flex min-h-56 flex-1 flex-col rounded-xl border border-slate-700 bg-slate-900/50 p-2">
+    <div
+      className={cn(
+        'flex min-h-56 flex-1 flex-col rounded-xl border bg-slate-900/50 p-2 transition-colors',
+        colOver ? 'border-sky-400 border-2' : 'border-slate-700',
+      )}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+      onDragEnter={() => setColOver(true)}
+      onDragLeave={clearOver}
+      onDrop={(e) => {
+        e.preventDefault();
+        const uid = getDragUid(e);
+        clearOver();
+        if (uid) onDrop(uid, type, st.placement[type].length);
+      }}
+    >
       <div className={cn('mb-2 flex items-center justify-center gap-1 rounded bg-gradient-to-r px-1 py-0.5 text-xs font-black text-black', CAT_TYPE_COLOR[type])}>
         {CAT_TYPE_LABEL[type]}
         <span className="rounded bg-black/40 px-1 text-[10px]">{cats.length}/{limit}</span>
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
-        {cats.map((inst) => (
-          <FieldCat key={inst.uid} inst={inst} st={st} hl={highlightUid === inst.uid} onUnplace={() => onUnplace(inst.uid)} />
+        {cats.map((inst, idx) => (
+          <FieldCat
+            key={inst.uid}
+            inst={inst}
+            st={st}
+            hl={highlightUid === inst.uid}
+            onUnplace={() => onUnplace(inst.uid)}
+            canDrag={!st.over}
+            dropOver={catOver === inst.uid}
+            onCatDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; setCatOver(inst.uid); }}
+            onCatDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const uid = getDragUid(e);
+              clearOver();
+              if (uid && uid !== inst.uid) onDrop(uid, type, idx);
+            }}
+          />
         ))}
         {heroUnder && (
           <div className="mt-auto flex items-center gap-2 rounded-lg border-2 border-amber-400 bg-amber-950/60 p-1.5">
@@ -313,6 +413,24 @@ export function BattleScreen({
     finish(false, true);
   };
 
+  /** 拖拽落点：手牌→栏、跨栏移动、栏内重排（引擎统一校验类型/栏满/合成） */
+  const handleDrop = (uid: string, toType: CatType, toIndex: number) => {
+    if (st.over) return;
+    setSel(null);
+    setSt((s) => dropCard(s, uid, toType, toIndex));
+  };
+
+  // 胜利后延迟弹出结算，先看城堡坍塌、公主获救
+  const [showEndModal, setShowEndModal] = useState(false);
+  useEffect(() => {
+    if (!st.over) { setShowEndModal(false); return; }
+    if (st.over === 'win') {
+      const t = window.setTimeout(() => setShowEndModal(true), 1800);
+      return () => window.clearTimeout(t);
+    }
+    setShowEndModal(true);
+  }, [st.over]);
+
   const selInst = sel ? st.hand.find((c) => c.uid === sel) : null;
   const selDef = selInst ? CAT_MAP[selInst.defId] : null;
   const hpPct = (st.fortressHp / st.fortressMax) * 100;
@@ -386,17 +504,20 @@ export function BattleScreen({
           ))}
         </div>
 
-        <div className="flex gap-2.5">
-          <StackCol type="support" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'support', uid))} />
-          <StackCol type="partner" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'partner', uid))} />
-          <StackCol type="vanguard" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'vanguard', uid))} />
+        <div className="flex flex-col gap-2.5 lg:flex-row">
+          <CastleScene st={st} />
+          <div className="flex flex-1 gap-2.5">
+            <StackCol type="support" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'support', uid))} onDrop={handleDrop} />
+            <StackCol type="partner" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'partner', uid))} onDrop={handleDrop} />
+            <StackCol type="vanguard" st={st} highlightUid={highlightUid} onUnplace={(uid) => setSt((s) => unplaceCard(s, 'vanguard', uid))} onDrop={handleDrop} />
+          </div>
         </div>
       </div>
 
       {/* 手牌区 */}
       <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-2">
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400">🃏 手牌（{st.hand.length}）— 点击选择，上场只能放进对应类型的栏</span>
+          <span className="text-xs font-bold text-slate-400">🃏 手牌（{st.hand.length}）— 拖动卡片上阵/调序（手机端点选后按「放入」）</span>
           {selInst && selDef && (
             <span className="ml-auto flex items-center gap-1.5">
               <Button
@@ -418,7 +539,7 @@ export function BattleScreen({
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {st.hand.map((inst) => (
-            <HandCard key={inst.uid} inst={inst} selected={sel === inst.uid} onClick={() => setSel(sel === inst.uid ? null : inst.uid)} />
+            <HandCard key={inst.uid} inst={inst} selected={sel === inst.uid} canDrag={!st.over} onClick={() => setSel(sel === inst.uid ? null : inst.uid)} />
           ))}
           {st.hand.length === 0 && <div className="flex h-20 flex-1 items-center justify-center text-xs text-slate-600">（手牌为空，抽卡获得猫猫）</div>}
         </div>
@@ -483,7 +604,7 @@ export function BattleScreen({
       )}
 
       {/* 结算 */}
-      {st.over && started && (
+      {st.over && started && showEndModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border-2 border-slate-600 bg-slate-900 p-6 text-center">
             {st.over === 'win' ? (
