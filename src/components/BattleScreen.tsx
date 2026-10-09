@@ -57,7 +57,7 @@ function StackCol({
         })}
         {heroUnder && (
           <div className="mt-auto flex items-center gap-2 rounded-lg border-2 border-amber-400 bg-amber-950/60 p-1.5">
-            <img src={import.meta.env.BASE_URL + "assets/hero-cat.png" alt="勇者猫" className="h-12 w-12 object-contain drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
+            <img src={import.meta.env.BASE_URL + "assets/hero-cat.png"} alt="勇者猫" className="h-12 w-12 object-contain drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
             <div className="flex-1">
               <div className="font-black text-amber-300">勇者</div>
               <div className="text-[11px] text-slate-400">基础攻击 1</div>
@@ -190,7 +190,7 @@ export function BattleScreen({
         key={flash}
         className={cn('relative overflow-hidden rounded-2xl border-2 border-red-900 fortress-hit-wrap', flash > 0 && 'fortress-hit')}
       >
-        <img src={import.meta.env.BASE_URL + "assets/castle.jpg" alt="魔王城堡" className="absolute inset-0 h-full w-full object-cover opacity-60" />
+        <img src={import.meta.env.BASE_URL + "assets/castle.jpg"} alt="魔王城堡" className="absolute inset-0 h-full w-full object-cover opacity-60" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
         <div className="relative p-3">
           <div className="flex items-end justify-between gap-2">
@@ -332,7 +332,7 @@ export function BattleScreen({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border-2 border-slate-600 bg-slate-900 p-6 text-center">
             {st.over === 'win' ? (
-              <img src={import.meta.env.BASE_URL + "assets/princess-cat.png" alt="公主猫" className="mx-auto h-36 object-contain drop-shadow-[0_0_24px_rgba(232,121,249,0.6)]" />
+              <img src={import.meta.env.BASE_URL + "assets/princess-cat.png"} alt="公主猫" className="mx-auto h-36 object-contain drop-shadow-[0_0_24px_rgba(232,121,249,0.6)]" />
             ) : (
               <div className="text-6xl">💀</div>
             )}

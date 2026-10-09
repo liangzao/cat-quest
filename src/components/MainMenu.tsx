@@ -24,11 +24,11 @@ export function MainMenu({
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-center gap-6 overflow-hidden p-4">
-      <img src={import.meta.env.BASE_URL + "assets/castle.jpg" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25" />
+      <img src={import.meta.env.BASE_URL + "assets/castle.jpg"} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/60 via-transparent to-slate-950" />
 
       <div className="relative text-center">
-        <img src={import.meta.env.BASE_URL + "assets/hero-cat.png" alt="勇者猫" className="mx-auto h-44 w-44 object-contain drop-shadow-[0_0_30px_rgba(250,204,21,0.45)] animate-[heroBob_3s_ease-in-out_infinite]" />
+        <img src={import.meta.env.BASE_URL + "assets/hero-cat.png"} alt="勇者猫" className="mx-auto h-44 w-44 object-contain drop-shadow-[0_0_30px_rgba(250,204,21,0.45)] animate-[heroBob_3s_ease-in-out_infinite]" />
         <h1 className="mt-2 bg-gradient-to-r from-amber-300 via-yellow-200 to-orange-300 bg-clip-text text-5xl font-black text-transparent drop-shadow">
           猫猫勇者
         </h1>

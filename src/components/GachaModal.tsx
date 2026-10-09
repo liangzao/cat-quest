@@ -49,7 +49,7 @@ export function GachaModal({
         </p>
 
         <div className={cn('mx-auto my-3 w-40 text-center', shaking && 'gacha-shake')}>
-          <img src={import.meta.env.BASE_URL + "assets/gacha.png" alt="猫猫扭蛋" className="w-40 h-40 object-contain drop-shadow-[0_0_20px_rgba(232,121,249,0.5)]" />
+          <img src={import.meta.env.BASE_URL + "assets/gacha.png"} alt="猫猫扭蛋" className="w-40 h-40 object-contain drop-shadow-[0_0_20px_rgba(232,121,249,0.5)]" />
         </div>
 
         <div className="flex gap-2">
