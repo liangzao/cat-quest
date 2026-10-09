@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CAT_MAP, catCost, star } from '@/game/cats';
+import { CAT_MAP, catCost, describeEffect, describeTrait, star } from '@/game/cats';
 import { fmt, DRAW_COST, SELL_PRICE, START_HAND, victoryReward } from '@/game/balance';
 import { createBattle, drawCard, endTurn, placeCard, resolveAction, sellCard, unplaceCard } from '@/game/engine';
 import { drawHand } from '@/game/gacha';
@@ -26,18 +26,69 @@ const COLS: { type: CatType; hint: string }[] = [
   { type: 'vanguard', hint: '▲ 从上到下行动（最先）' },
 ];
 
+/** 悬停/长按悬浮卡：显示猫猫当前等级的具体数值 */
+function CatTip({ inst, open }: { inst: CatInstance; open?: boolean }) {
+  const def = CAT_MAP[inst.defId];
+  const cost = def.traits.some((t) => t.kind === 'free') ? 0 : catCost(def);
+  return (
+    <div
+      className={cn(
+        'pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-56 -translate-x-1/2 rounded-xl border border-slate-500 bg-slate-950/95 p-2.5 text-left shadow-2xl',
+        open ? 'block' : 'hidden group-hover:block',
+      )}
+    >      <div className="flex items-center gap-1.5">
+        <span className="text-2xl">{def.emoji}</span>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-black">{def.name}</div>
+          <div className="text-[10px] text-amber-300">{star(def.rarity)} · {CAT_TYPE_LABEL[def.type]} · {cost === 0 ? '不耗粮' : `🍖${cost}`}</div>
+        </div>
+        <span className="rounded bg-sky-900 px-1.5 py-0.5 text-[10px] font-bold text-sky-200">Lv.{inst.level}</span>
+      </div>
+      <div className="mt-1.5 space-y-0.5 border-t border-slate-700 pt-1.5">
+        {def.effects.map((e, i) => (
+          <div key={i} className="text-[11px] leading-snug text-slate-200">✦ {describeEffect(e, inst.level)}</div>
+        ))}
+        {def.traits.map((t, i) => (
+          <div key={i} className="text-[11px] leading-snug text-fuchsia-300">❖ {describeTrait(t)}</div>
+        ))}
+      </div>
+      <div className="mt-1 border-t border-slate-800 pt-1 text-[10px] leading-snug text-slate-400">{def.desc}</div>
+    </div>
+  );
+}
+
+/** 长按 400ms 打开悬浮卡（手机端无悬停）；悬浮卡打开时再点一下只关闭、不触发卡片点击 */
+function useLongTip() {
+  const [tipOpen, setTipOpen] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  const start = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setTipOpen(true), 400);
+  };
+  const cancel = () => window.clearTimeout(timer.current);
+  const click = (fn: () => void) => () => {
+    if (tipOpen) { setTipOpen(false); return; }
+    fn();
+  };
+  const touch = { onTouchStart: start, onTouchEnd: cancel, onTouchMove: cancel };
+  return { tipOpen, touch, click, close: () => setTipOpen(false) };
+}
+
 function HandCard({ inst, selected, onClick }: { inst: CatInstance; selected: boolean; onClick: () => void }) {
   const def = CAT_MAP[inst.defId];
+  const tip = useLongTip();
   return (
     <button
-      onClick={onClick}
+      onClick={tip.click(onClick)}
+      {...tip.touch}
       className={cn(
-        'relative w-24 shrink-0 rounded-xl border-2 bg-slate-900/90 p-1.5 text-left transition-all sm:w-28',
+        'group relative w-24 shrink-0 rounded-xl border-2 bg-slate-900/90 p-1.5 text-left transition-all sm:w-28',
         def.rarity === 2 ? 'border-amber-400/70' : def.rarity === 3 ? 'border-fuchsia-400/80 shadow-[0_0_12px_rgba(232,121,249,0.35)]' : 'border-slate-500/70',
         selected && 'ring-4 ring-yellow-300 scale-105',
         onClick && 'cursor-pointer hover:scale-[1.04] active:scale-95',
       )}
     >
+      <CatTip inst={inst} open={tip.tipOpen} />
       <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-lg bg-gradient-to-r', CAT_TYPE_COLOR[def.type])} />
       <div className="flex items-center gap-1">
         <span className="text-xl leading-none">{def.emoji}</span>
@@ -49,6 +100,31 @@ function HandCard({ inst, selected, onClick }: { inst: CatInstance; selected: bo
       {inst.level > 1 && (
         <div className="absolute -right-1 -top-1 rounded-full bg-sky-600 px-1 text-[9px] font-black text-white">Lv.{inst.level}</div>
       )}
+    </button>
+  );
+}
+
+function FieldCat({ inst, st, hl, onUnplace }: { inst: CatInstance; st: BattleState; hl: boolean; onUnplace: () => void }) {
+  const def = CAT_MAP[inst.defId];
+  const cost = def.traits.some((t) => t.kind === 'free') ? 0 : catCost(def);
+  const starving = cost > st.food;
+  const tip = useLongTip();
+  return (
+    <button
+      onClick={tip.click(onUnplace)}
+      {...tip.touch}
+      title="点击撤回手牌"
+      className={cn(
+        'group relative flex items-center gap-1.5 rounded-lg border bg-slate-800/80 px-2 py-1.5 text-sm text-left transition-all',
+        hl ? 'border-yellow-300 ring-2 ring-yellow-300 scale-105 bg-slate-700' : 'border-slate-600',
+        starving && !hl && 'opacity-45',
+      )}
+    >
+      <CatTip inst={inst} open={tip.tipOpen} />
+      <span className={cn('text-xl', hl && 'animate-bounce')}>{def.emoji}</span>
+      <span className="flex-1 truncate font-bold">{def.name}</span>
+      {inst.level > 1 && <span className="rounded bg-sky-900/80 px-1 text-[10px] font-bold text-sky-300">Lv.{inst.level}</span>}
+      <span className="text-[11px] text-slate-400">{cost === 0 ? '免费' : `🍖${cost}`}</span>
     </button>
   );
 }
@@ -71,29 +147,9 @@ function StackCol({
         <span className="rounded bg-black/40 px-1 text-[10px]">{cats.length}/{limit}</span>
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
-        {cats.map((inst) => {
-          const def = CAT_MAP[inst.defId];
-          const cost = def.traits.some((t) => t.kind === 'free') ? 0 : catCost(def);
-          const starving = cost > st.food;
-          const hl = highlightUid === inst.uid;
-          return (
-            <button
-              key={inst.uid}
-              onClick={() => onUnplace(inst.uid)}
-              title="点击撤回手牌"
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg border bg-slate-800/80 px-2 py-1.5 text-sm text-left transition-all',
-                hl ? 'border-yellow-300 ring-2 ring-yellow-300 scale-105 bg-slate-700' : 'border-slate-600',
-                starving && !hl && 'opacity-45',
-              )}
-            >
-              <span className={cn('text-xl', hl && 'animate-bounce')}>{def.emoji}</span>
-              <span className="flex-1 truncate font-bold">{def.name}</span>
-              {inst.level > 1 && <span className="rounded bg-sky-900/80 px-1 text-[10px] font-bold text-sky-300">Lv.{inst.level}</span>}
-              <span className="text-[11px] text-slate-400">{cost === 0 ? '免费' : `🍖${cost}`}</span>
-            </button>
-          );
-        })}
+        {cats.map((inst) => (
+          <FieldCat key={inst.uid} inst={inst} st={st} hl={highlightUid === inst.uid} onUnplace={() => onUnplace(inst.uid)} />
+        ))}
         {heroUnder && (
           <div className="mt-auto flex items-center gap-2 rounded-lg border-2 border-amber-400 bg-amber-950/60 p-1.5">
             <img src={import.meta.env.BASE_URL + "assets/hero-cat.png"} alt="勇者猫" className="h-12 w-12 object-contain drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
