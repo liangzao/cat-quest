@@ -13,24 +13,20 @@ export const newUid = () => `u${uidSeq++}`;
 export interface BattleOptions {
   startDiamonds?: number; // 🏆 兑换带入的开局钻石
   initialHand?: CatInstance[]; // 开局手牌
-  hpLeft?: number;          // 上次未通关退出时保留的堡垒血量
 }
 
 export function createBattle(level: LevelDef, foodCap: number, opts: BattleOptions = {}): BattleState {
-  const hp = opts.hpLeft ?? level.hp;
   return {
     level, placement: emptyPlacement(),
     hand: opts.initialHand ?? [],
-    fortressHp: hp, fortressMax: level.hp,
+    fortressHp: level.hp, fortressMax: level.hp,
     turn: 1, ap: HERO_BASE_AP, apMax: HERO_BASE_AP, apBonus: 0,
     food: foodCap, foodMax: foodCap,
     diamonds: opts.startDiamonds ?? 0, diamondEarned: 0,
     turnActed: {},
     lastHit: null, lastTotal: 0, lastOrder: [],
     floats: [],
-    log: hp < level.hp
-      ? [`🏰 ${level.name}：堡垒剩余 HP ${hp}（上次进攻的战果已保留），限 ${level.maxTurns} 回合击破！`]
-      : [`🏰 ${level.name}：堡垒 HP ${level.hp}，限 ${level.maxTurns} 回合击破！`],
+    log: [`🏰 ${level.name}：堡垒 HP ${level.hp}，限 ${level.maxTurns} 回合击破！每次挑战城堡都是满血。`],
     over: null, bestHit: 0, bestAction: 0, totalDealt: 0, floatSeq: 0,
   };
 }
@@ -203,7 +199,7 @@ interface Pend {
 
 /**
  * 执行一次主角攻击（消耗 1 行动值）：先锋 → 伙伴+主角 → 支援 依次结算。
- * 猫粮每回合开始时回满一次；勇者每行动一次，扣除在场出手的猫猫的猫粮。
+ * 猫粮每次主角攻击后回满：每次行动都从满粮开始扣除出手的猫猫的猫粮。
  */
 export function resolveAction(prev: BattleState): BattleState {
   if (prev.over) return prev;
@@ -231,8 +227,10 @@ export function resolveAction(prev: BattleState): BattleState {
   const logLines: string[] = [];
   const actedOrder: string[] = []; // 按行动顺序记录出手的猫猫（动画用）
 
-  let food = st.food;
+  // 猫粮每次攻击后回满：本次行动从满粮开始扣
+  let food = st.foodMax;
   const acted = new Set<string>();
+  logLines.push(`🍖 猫粮回满（${st.foodMax}），开始行动`);
 
   // 词条数值倍率：每升 1 级翻倍（合成升级的质变）；次数类按等级线性
   const applyZoneEffect = (e: CatEffect, mult: number, em: number) => {
@@ -369,7 +367,7 @@ export function resolveAction(prev: BattleState): BattleState {
   st.bestHit = Math.max(st.bestHit, hit.total);
   st.bestAction = Math.max(st.bestAction, dealt);
 
-  // ── 关卡内钻石：固定 100 + 伤害奖励（dealt/100）+ 猫猫加成 ──
+  // ── 关卡内钻石：固定 180 + 伤害奖励（dealt/5）+ 猫猫加成 ──
   const base = DIAMOND_BASE + Math.floor(dealt / DIAMOND_DIV);
   const gain = Math.round(base * (1 + diamondPct));
   st.diamonds += gain;
@@ -403,7 +401,7 @@ function fmtPct(p: number): string {
   return `${Math.round(p * 100)}%`;
 }
 
-/** 回合结束：猫粮回满一次，进入下一回合 */
+/** 回合结束：进入下一回合（猫粮在每次攻击后回满，与回合无关） */
 export function endTurn(prev: BattleState): BattleState {
   if (prev.over) return prev;
   const turn = prev.turn + 1;
@@ -413,6 +411,6 @@ export function endTurn(prev: BattleState): BattleState {
   return {
     ...prev, turn, ap: prev.apMax, apBonus: 0, turnActed: {},
     food: prev.foodMax,
-    log: [...prev.log, `— 第 ${turn} 回合开始 · 🍖 猫粮回满 —`].slice(-80),
+    log: [...prev.log, `— 第 ${turn} 回合开始 —`].slice(-80),
   };
 }

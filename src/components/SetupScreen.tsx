@@ -19,7 +19,6 @@ export function SetupScreen({
   const startDiamonds = exchange * EXCHANGE_RATE;
   const cap = Math.round(foodCap(save.foodUpgrade) * level.foodScale);
   const upCost = foodUpgradeCost(save.foodUpgrade);
-  const hpLeft = save.records[level.id]?.hpLeft;
   const canAffordUp = save.badges - exchange >= upCost;
 
   return (
@@ -37,23 +36,14 @@ export function SetupScreen({
         <div className="flex items-end justify-between">
           <div className="text-lg font-black text-red-200">🏰 {level.id} · {level.name}</div>
           <div className="text-right">
-            {hpLeft !== undefined && hpLeft < level.hp ? (
-              <>
-                <div className="text-2xl font-black leading-none text-orange-300">{fmt(hpLeft)}</div>
-                <div className="mt-0.5 text-xs text-slate-400">/ {fmt(level.hp)}（上次已削弱）</div>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-black leading-none text-yellow-200">{fmt(level.hp)}</div>
-                <div className="mt-0.5 text-xs text-slate-400">城堡耐久</div>
-              </>
-            )}
+            <div className="text-2xl font-black leading-none text-yellow-200">{fmt(level.hp)}</div>
+            <div className="mt-0.5 text-xs text-slate-400">城堡耐久（满血）</div>
           </div>
         </div>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <span>⏳ <b className="text-amber-300">{level.maxTurns}</b> 回合</span>
           <span>⚔️ 主角攻击 <b className="text-sky-300">1</b></span>
-          <span>🍖 每回合 <b className="text-orange-300">{cap}</b> 猫粮</span>
+          <span>🍖 每次攻击 <b className="text-orange-300">{cap}</b> 猫粮</span>
           {level.shield ? <span>🛡️ 每行动吸收 <b className="text-sky-300">{fmt(level.shield)}</b></span> : null}
           {level.dmgCap ? <span>⛔ 每行动限伤 <b className="text-orange-300">{fmt(level.dmgCap)}</b></span> : null}
         </div>
@@ -62,8 +52,8 @@ export function SetupScreen({
 
       {/* 玩法说明 */}
       <div className="mb-3 rounded-lg border border-cyan-500/25 bg-cyan-950/20 p-2.5 text-xs leading-relaxed text-cyan-200">
-        💎 <b>关卡内经济</b>：每发动一次攻击，固定获得 150💎 + 伤害奖励钻石（每 5 点伤害 +1💎），炼金猫还能再加成。
-        钻石用来抽猫猫（80💎/次）——同名猫猫上场自动<b>合成升级</b>，不要的猫可以出售（+40💎）。
+        💎 <b>关卡内经济</b>：每发动一次攻击，固定获得 180💎 + 伤害奖励钻石（每 5 点伤害 +1💎），炼金猫还能再加成。
+        钻石用来抽猫猫（70💎/次）——同名猫猫上场自动<b>合成升级</b>，不要的猫可以出售（+40💎）。
         💎 与猫猫无论胜负都清空；只有胜利能获得永久的 🏆 徽章。
       </div>
       {level.tutorial && (

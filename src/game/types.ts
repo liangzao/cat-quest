@@ -147,7 +147,7 @@ export interface BattleState {
   apMax: number;
   apBonus: number;
   food: number;
-  foodMax: number;                // 猫粮上限：每回合开始时回满一次
+  foodMax: number;                // 猫粮上限：每次主角攻击后回满
   diamonds: number;               // 💎 关卡内钻石（胜负都清空）
   diamondEarned: number;          // 本关累计获得（结算展示用）
   turnActed: Record<string, number>; // uid -> 本回合已行动次数（特性用）
@@ -169,7 +169,6 @@ export interface LevelRecord {
   bestHit: number;
   bestTotal: number;
   completed: boolean;
-  hpLeft?: number; // 未通关退出时保留的堡垒剩余血量（再进入时续打）
 }
 
 export interface SaveData {

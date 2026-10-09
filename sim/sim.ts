@@ -3,7 +3,7 @@
 import { STORY_LEVELS, endlessLevel } from '../src/game/levels';
 import { createBattle, drawCard, placeCard, resolveAction } from '../src/game/engine';
 import { drawHand } from '../src/game/gacha';
-import { foodCap, START_HAND } from '../src/game/balance';
+import { foodCap, START_HAND, DRAW_COST } from '../src/game/balance';
 import type { BattleState, LevelDef } from '../src/game/types';
 
 interface BotOpts {
@@ -18,7 +18,7 @@ function runBattle(level: LevelDef, cap: number, opts: BotOpts): { win: boolean;
   let guard = 0;
   while (!st.over && guard++ < 500) {
     // 1) 抽卡（只要够钱且在限制内）
-    while (draws < opts.maxDrawsPerBattle && st.diamonds >= 80 && !st.over) {
+    while (draws < opts.maxDrawsPerBattle && st.diamonds >= DRAW_COST && !st.over) {
       st = drawCard(st);
       draws++;
     }

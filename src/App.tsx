@@ -13,7 +13,6 @@ import { Codex } from '@/components/Codex';
 export interface BattleResult {
   win: boolean;
   retreated?: boolean;
-  hpLeft: number;
   bestHit: number;
   bestTotal: number;
   totalDealt: number;
@@ -54,12 +53,7 @@ export default function App() {
         const rec = next.records[levelId] ?? { bestHit: 0, bestTotal: 0, completed: false };
         rec.bestHit = Math.max(rec.bestHit, r.bestHit);
         rec.bestTotal = Math.max(rec.bestTotal, r.bestTotal);
-        if (r.win) {
-          rec.completed = true;
-          delete rec.hpLeft; // 通关后清除保留血量
-        } else {
-          rec.hpLeft = r.hpLeft; // 未通关（含撤回）：保留战果，下次续打
-        }
+        if (r.win) rec.completed = true;
         next.records[levelId] = rec;
         if (mode === 'endless' && r.win) {
           const stage = Number(levelId.split('-')[1]) + 1;
@@ -119,14 +113,12 @@ export default function App() {
     case 'battle': {
       const s = screen;
       const cap = Math.round(foodCap(save.foodUpgrade) * s.level.foodScale);
-      const hpLeft = save.records[s.level.id]?.hpLeft;
       return (
         <BattleScreen
           key={s.key}
           level={s.level}
           foodCap={cap}
           startDiamonds={s.startDiamonds}
-          hpLeft={hpLeft}
           onFinish={(r) => {
             handleBattleEnd(s.mode, s.level.id, {
               ...r,

@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 export interface RunResult {
   win: boolean;
   retreated?: boolean;
-  hpLeft: number;
   bestHit: number;
   bestTotal: number;
   totalDealt: number;
@@ -324,16 +323,15 @@ function fmtPct(p: number): string {
 }
 
 export function BattleScreen({
-  level, foodCap, startDiamonds = 0, hpLeft, onFinish,
+  level, foodCap, startDiamonds = 0, onFinish,
 }: {
   level: LevelDef;
   foodCap: number;
   startDiamonds?: number;
-  hpLeft?: number;
   onFinish: (result: RunResult) => void;
 }) {
   const [st, setSt] = useState<BattleState>(() =>
-    createBattle(level, foodCap, { startDiamonds, initialHand: drawHand(START_HAND), hpLeft }));
+    createBattle(level, foodCap, { startDiamonds, initialHand: drawHand(START_HAND) }));
   const [flash, setFlash] = useState(0);
   const [muted, setMutedState] = useState(isMuted());
   const [sel, setSel] = useState<string | null>(null); // 选中的手牌 uid
@@ -361,7 +359,6 @@ export function BattleScreen({
   const finish = (win: boolean, retreated = false) => {
     onFinish({
       win, retreated,
-      hpLeft: st.fortressHp,
       bestHit: st.bestHit,
       bestTotal: st.bestAction,
       totalDealt: st.totalDealt,
@@ -475,7 +472,7 @@ export function BattleScreen({
           {Array.from({ length: st.ap }).map((_, i) => <span key={i} className="text-xl text-yellow-300">●</span>)}
           {Array.from({ length: Math.max(0, st.apMax + st.apBonus - st.ap) }).map((_, i) => <span key={i} className="text-xl text-slate-700">○</span>)}
         </span>
-        <span className="text-lg" title="猫粮每回合开始回满一次；勇者每行动一次扣除出手猫猫的猫粮">🍖 <b className="text-orange-300">{st.food}</b><span className="text-sm text-slate-400">/{foodCap}</span></span>
+        <span className="text-lg" title="每次攻击后猫粮回满；勇者每行动一次扣除出手猫猫的猫粮">🍖 <b className="text-orange-300">{st.food}</b><span className="text-sm text-slate-400">/{foodCap}</span></span>
         <span className="text-lg" title="关卡钻石：抽卡/出售用，胜负都清空">💎 <b className="text-cyan-300">{fmt(st.diamonds)}</b></span>
         <span className="ml-auto text-sm text-slate-400">最高单发 <b className="text-yellow-300">{fmt(st.bestHit)}</b></span>
         <button onClick={toggleMute} className="rounded-lg bg-slate-700 px-2 py-0.5 text-sm hover:bg-slate-500">
@@ -565,7 +562,7 @@ export function BattleScreen({
         <Button variant="outline" className="h-16 px-4 text-base" onClick={endTurnClick} disabled={!!st.over || busy || !started}>
           结束回合
         </Button>
-        <Button variant="outline" className="h-16 px-4 text-base" onClick={retreat} disabled={!!st.over || !started} title="撤回整队：本关获得的猫猫与钻石清空，但堡垒已受的伤害会保留">
+        <Button variant="outline" className="h-16 px-4 text-base" onClick={retreat} disabled={!!st.over || !started} title="撤回整队：本关获得的猫猫与钻石清空，城堡恢复满血">
           🏕️ 撤回
         </Button>
       </div>
@@ -583,9 +580,8 @@ export function BattleScreen({
           <div className="w-full max-w-md rounded-2xl border-2 border-amber-500/50 bg-slate-900 p-5 text-center">
             <h3 className="text-xl font-black text-amber-300">🎒 局内初始资源</h3>
             <p className="mt-1 text-xs text-slate-400">
-              本关开始时随机发放 3 张猫猫卡{startDiamonds > 0 && `，并带入兑换的 💎${fmt(startDiamonds)}`}
-              {hpLeft !== undefined && hpLeft < level.hp && <>；堡垒已被削弱至 <b className="text-orange-300">{fmt(hpLeft)}</b></>}。
-              猫猫与钻石仅本关有效，胜负都清空。
+              本关开始时随机发放 3 张猫猫卡{startDiamonds > 0 && `，并带入兑换的 💎${fmt(startDiamonds)}`}。
+              猫猫与钻石仅本关有效，胜负都清空；每次挑战城堡都是满血。
             </p>
             <div className="mt-3 flex justify-center gap-2">
               {st.hand.map((inst) => <ModalCat key={inst.uid} inst={inst} />)}
@@ -621,7 +617,7 @@ export function BattleScreen({
                 <div className="text-base">获得 <b className="text-fuchsia-300">🏆{fmt(victoryReward(level.chapter, Math.max(0, level.maxTurns - st.turn)))} 勇者徽章</b>
                   <span className="text-xs text-slate-400">（剩余回合越多越多）</span></div>
               ) : (
-                <div className="text-xs text-orange-200">堡垒还剩 <b>{fmt(st.fortressHp)}</b> —— 已造成的伤害会保留，调整阵容再冲一次！</div>
+                <div className="text-xs text-orange-200">堡垒还剩 <b>{fmt(st.fortressHp)}</b> —— 调整阵容与抽卡策略，再次挑战满血城堡！</div>
               )}
               <div className="text-xs text-slate-400">
                 本关累计获得 💎{fmt(st.diamondEarned)} —— 关卡内资源已清空

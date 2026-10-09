@@ -18,16 +18,16 @@ function trim(v: number): string {
 
 // ── 局内经济（💎 关卡钻石，胜负都清空）──────────────────────────
 /** 抽卡费用 */
-export const DRAW_COST = 80;
+export const DRAW_COST = 70;
 /** 出售猫猫获得钻石 */
 export const SELL_PRICE = 40;
 /** 开局手牌数量 */
-export const START_HAND = 3;
+export const START_HAND = 4;
 /** 猫猫等级上限（同名卡合成升级） */
 export const MAX_LEVEL = 5;
 
 /** 每次行动固定获得的钻石（≥1 张抽卡） */
-export const DIAMOND_BASE = 150;
+export const DIAMOND_BASE = 180;
 /** 伤害奖励：每 dealt/DIAMOND_DIV 点伤害 +1 钻石 */
 export const DIAMOND_DIV = 5;
 
