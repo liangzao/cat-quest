@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.625rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ── 猫猫勇者：暗色奇幻主题 + 游戏动画 ─────────────────────────── */
+
+:root {
+  --background: 250 30% 7%;
+  --foreground: 0 0% 98%;
+  --card: 250 25% 10%;
+  --card-foreground: 0 0% 98%;
+  --popover: 250 25% 10%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 45 90% 60%;
+  --primary-foreground: 250 30% 8%;
+  --secondary: 250 15% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 250 15% 16%;
+  --muted-foreground: 250 10% 65%;
+  --accent: 250 15% 16%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 70% 45%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 250 12% 20%;
+  --input: 250 12% 20%;
+  --ring: 45 90% 60%;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(120, 60, 200, 0.25), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(200, 60, 60, 0.15), transparent),
+    hsl(250 30% 7%);
+  min-height: 100vh;
+  user-select: none;
+}
+
+/* 伤害飘字 */
+@keyframes floatUp {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.6); }
+  15%  { opacity: 1; transform: translateY(0) scale(1.1); }
+  30%  { transform: translateY(-6px) scale(1); }
+  100% { opacity: 0; transform: translateY(-70px) scale(0.95); }
+}
+
+.float-num {
+  animation: floatUp 1.5s ease-out forwards;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 16px currentColor;
+  font-size: 1.6rem;
+  white-space: nowrap;
+}
+
+.float-num.big-num {
+  font-size: 3rem;
+  animation: floatUp 2s ease-out forwards, bigPop 0.4s ease-out;
+}
+
+@keyframes bigPop {
+  0% { transform: scale(0.3) rotate(-6deg); }
+  60% { transform: scale(1.25) rotate(2deg); }
+  100% { transform: scale(1); }
+}
+
+/* 堡垒受击震动 */
+@keyframes fortressHit {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px) rotate(-0.5deg); }
+  40% { transform: translateX(5px) rotate(0.5deg); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+.fortress-hit {
+  animation: fortressHit 0.35s ease-out;
+}
+
+/* 呼吸的光 */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(250, 204, 21, 0.4); }
+  50% { box-shadow: 0 0 18px rgba(250, 204, 21, 0.8); }
+}
+
+/* 扭蛋抖动 */
+@keyframes gachaShake {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-8deg) scale(1.05); }
+  40% { transform: rotate(8deg) scale(1.08); }
+  60% { transform: rotate(-6deg) scale(1.05); }
+  80% { transform: rotate(6deg); }
+}
+
+.gacha-shake {
+  animation: gachaShake 0.6s ease-in-out;
+}
+
+/* 勇者猫浮动 */
+@keyframes heroBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
