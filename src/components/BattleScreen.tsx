@@ -4,7 +4,7 @@ import { CAT_MAP, catCost, catImg, describeEffect, describeTrait, star } from '@
 import { fmt, DRAW_COST, SELL_PRICE, START_HAND, victoryReward } from '@/game/balance';
 import { createBattle, drawCard, dropCard, endTurn, placeCard, resolveAction, sellCard, unplaceCard } from '@/game/engine';
 import { drawHand } from '@/game/gacha';
-import { playBgm, playSfx, restoreMute, setMuted, isMuted } from '@/game/audio';
+import { playBgm, playSfx, playMeow, restoreMute, setMuted, isMuted } from '@/game/audio';
 import type { BattleState, CatInstance, CatType, LevelDef } from '@/game/types';
 import { CAT_TYPE_COLOR, CAT_TYPE_LABEL, SLOT_LIMIT } from '@/game/types';
 import { Button } from '@/components/ui/button';
@@ -410,11 +410,23 @@ export function BattleScreen({
     finish(false, true);
   };
 
-  /** 拖拽落点：手牌→栏、跨栏移动、栏内重排（引擎统一校验类型/栏满/合成） */
+  /** 拖拽落点：手牌→栏、跨栏移动、栏内重排（引擎统一校验类型/栏满/合成）；成功上阵时喵一声 */
   const handleDrop = (uid: string, toType: CatType, toIndex: number) => {
     if (st.over) return;
     setSel(null);
-    setSt((s) => dropCard(s, uid, toType, toIndex));
+    const next = dropCard(st, uid, toType, toIndex);
+    const last = next.log[next.log.length - 1] ?? '';
+    if (next !== st && !last.startsWith('⛔')) playMeow();
+    setSt(next);
+  };
+
+  /** 点选手牌后「放入」上阵；成功时喵一声 */
+  const placeSelected = (uid: string) => {
+    const next = placeCard(st, uid);
+    const last = next.log[next.log.length - 1] ?? '';
+    if (next !== st && !last.startsWith('⛔')) playMeow();
+    setSt(next);
+    setSel(null);
   };
 
   // 胜利后延迟弹出结算，先看城堡坍塌、公主获救
@@ -520,7 +532,7 @@ export function BattleScreen({
               <Button
                 size="sm"
                 className="h-7 bg-gradient-to-r from-sky-600 to-blue-700 px-3 text-xs font-bold"
-                onClick={() => { setSt((s) => placeCard(s, selInst.uid)); setSel(null); }}
+                onClick={() => placeSelected(selInst.uid)}
               >
                 ⬆ 放入{CAT_TYPE_LABEL[selDef.type]}
               </Button>

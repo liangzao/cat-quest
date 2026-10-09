@@ -45,6 +45,12 @@ export const CATS: CatDef[] = [
     traits: [tr({ kind: 'free' })],
     desc: '3★ · 造成 2 次 1 点伤害（升级翻倍）；不消耗猫粮。',
   },
+  {
+    id: 'hymn', name: '圣歌猫', emoji: '🎼', type: 'vanguard', rarity: 3,
+    effects: [eff({ kind: 'allCatBuff', pct: 0.25 }), eff({ kind: 'allExtraBuff', pct: 0.25 })],
+    traits: [],
+    desc: '3★ · 所有猫猫的加成与额外加成效果各 +25%（升级翻倍）。圣歌一响，全队沸腾。',
+  },
 
   // ── 伙伴猫猫：主角行动时依次行动，强化主角的乘区 ──
   {
@@ -89,6 +95,12 @@ export const CATS: CatDef[] = [
     traits: [],
     desc: '2★ · 主角本行动攻击次数 +1（升级翻倍）。让每一层增幅都翻倍兑现。',
   },
+  {
+    id: 'clone', name: '分身猫', emoji: '🪞', type: 'partner', rarity: 3,
+    effects: [eff({ kind: 'heroHits', value: 2 })],
+    traits: [],
+    desc: '3★ · 主角本行动攻击次数 +2（升级次数×等级）。镜中分身，同剑齐挥。',
+  },
 
   // ── 支援猫猫：主角行动后行动，回响与后勤 ──
   {
@@ -126,6 +138,12 @@ export const CATS: CatDef[] = [
     effects: [eff({ kind: 'echo', pct: 0.3, times: 2 })],
     traits: [tr({ kind: 'free' })],
     desc: '3★ · 主角本行动造成的伤害再造成 30% 的 2 次（升级翻倍）；不消耗猫粮。',
+  },
+  {
+    id: 'time', name: '时之猫', emoji: '⏳', type: 'support', rarity: 3,
+    effects: [eff({ kind: 'heroTAllPct', pct: 0.2 })],
+    traits: [tr({ kind: 'apPlus', value: 1 })],
+    desc: '3★ · 主角总百分比乘区 +20%（升级翻倍）；行动时为主角 +1 行动值。拨动时间的魔猫。',
   },
 ];
 

@@ -41,3 +41,13 @@ export function playSfx(name: 'hit' | 'win' | 'gacha' | 'click') {
   a.currentTime = 0;
   a.play().catch(() => { /* 未交互前静默失败 */ });
 }
+
+/** 猫叫：猫猫上阵时播放，随机变调让每只猫听起来不同 */
+export function playMeow() {
+  const a = get('meow.mp3');
+  a.muted = muted;
+  a.currentTime = 0;
+  a.volume = 0.7;
+  a.playbackRate = 0.8 + Math.random() * 0.5;
+  a.play().catch(() => { /* 未交互前静默失败 */ });
+}
